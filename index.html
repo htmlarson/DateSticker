@@ -93,10 +93,10 @@
       padding: 0 8px;
     }
     #name {
-        text-transform: capitalize;
+      text-transform: capitalize;
     }
     #state {
-        text-transform: uppercase;
+      text-transform: uppercase;
     }
 
     .month,
@@ -135,14 +135,18 @@
         localStorage.setItem("stickerType", selectedType);
         sticker.style.transition = "background-color 0.5s ease-in-out";
         if (selectedType === "center") {
+          // Hide color picker if previously displayed
+          document.getElementById("colorPicker").style.display = "none";
           sticker.style.backgroundColor = "#008000";
         } else if (selectedType === "dealer") {
+          document.getElementById("colorPicker").style.display = "none";
           sticker.style.backgroundColor = "#FFD700";
         } else if (selectedType === "fun") {
           // Show the hidden color picker
-          document.getElementById("colorPicker").style.display = "block";
+          const colorPicker = document.getElementById("colorPicker");
+          colorPicker.style.display = "block";
           // Auto-trigger the color picker
-          document.getElementById("colorPicker").click();
+          colorPicker.click();
         }
         select.value = "";
       }
@@ -151,16 +155,17 @@
     function loadStickerType() {
       const storedType = localStorage.getItem("stickerType");
       const sticker = document.querySelector(".sticker");
+      // Hide color picker by default unless user manually chooses "fun"
+      document.getElementById("colorPicker").style.display = "none";
       if (storedType) {
         if (storedType === "center") {
           sticker.style.backgroundColor = "#008000";
         } else if (storedType === "dealer") {
           sticker.style.backgroundColor = "#FFD700";
         } else if (storedType === "fun") {
-          // load color from localStorage
+          // load color from localStorage but do not show the color picker automatically
           const storedColor = localStorage.getItem("stickerColor") || "#008000";
           sticker.style.backgroundColor = storedColor;
-          document.getElementById("colorPicker").style.display = "block";
         }
       }
     }
