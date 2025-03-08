@@ -125,28 +125,42 @@
     select {
       margin-top: 20px;
     }
+
+    /* Make the color picker more obvious on iOS by providing a label and margin */
+    #colorPickerContainer {
+      display: none;
+      margin-top: 20px;
+      text-align: center;
+    }
+    #colorPicker {
+      width: 60px;
+      height: 40px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
   </style>
   <script>
     function changeStickerType() {
       const select = document.getElementById("stickerType");
       const selectedType = select.value;
       const sticker = document.querySelector(".sticker");
+      const colorPickerContainer = document.getElementById("colorPickerContainer");
       if (selectedType) {
         localStorage.setItem("stickerType", selectedType);
         sticker.style.transition = "background-color 0.5s ease-in-out";
         if (selectedType === "center") {
           // Hide color picker if previously displayed
-          document.getElementById("colorPicker").style.display = "none";
+          colorPickerContainer.style.display = "none";
           sticker.style.backgroundColor = "#008000";
         } else if (selectedType === "dealer") {
-          document.getElementById("colorPicker").style.display = "none";
+          colorPickerContainer.style.display = "none";
           sticker.style.backgroundColor = "#FFD700";
         } else if (selectedType === "fun") {
-          // Show the hidden color picker
-          const colorPicker = document.getElementById("colorPicker");
-          colorPicker.style.display = "block";
-          // Auto-trigger the color picker
-          colorPicker.click();
+          // Show the color picker container
+          colorPickerContainer.style.display = "block";
         }
         select.value = "";
       }
@@ -155,17 +169,21 @@
     function loadStickerType() {
       const storedType = localStorage.getItem("stickerType");
       const sticker = document.querySelector(".sticker");
-      // Hide color picker by default unless user manually chooses "fun"
-      document.getElementById("colorPicker").style.display = "none";
+      const colorPickerContainer = document.getElementById("colorPickerContainer");
+      // Hide color picker container by default unless user manually chooses "fun"
+      colorPickerContainer.style.display = "none";
+
       if (storedType) {
         if (storedType === "center") {
           sticker.style.backgroundColor = "#008000";
         } else if (storedType === "dealer") {
           sticker.style.backgroundColor = "#FFD700";
         } else if (storedType === "fun") {
-          // load color from localStorage but do not show the color picker automatically
+          // load color from localStorage
           const storedColor = localStorage.getItem("stickerColor") || "#008000";
           sticker.style.backgroundColor = storedColor;
+          // Show container so user knows they can pick a different color
+          colorPickerContainer.style.display = "block";
         }
       }
     }
@@ -264,8 +282,11 @@
     <option value="fun">I like fun</option>
   </select>
 
-  <!-- Hidden color picker that will appear if "I like fun" is chosen -->
-  <input type="color" id="colorPicker" name="colorPicker" style="display:none;" />
+  <!-- Container holding our color picker for "fun" mode -->
+  <div id="colorPickerContainer">
+    <label for="colorPicker">Tap to choose sticker color:</label>
+    <input type="color" id="colorPicker" name="colorPicker" />
+  </div>
 
 </body>
 </html>
