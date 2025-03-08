@@ -35,6 +35,7 @@
       font-family: Arial, sans-serif;
       margin: 0;
       flex-direction: column;
+      overflow: hidden; /* So that falling emojis won't cause scrolling */
     }
     @media (prefers-color-scheme: dark) {
       body {
@@ -61,6 +62,7 @@
       flex-direction: column;
       justify-content: space-between;
       transition: background-color 0.5s ease-in-out;
+      z-index: 100; /* Ensure sticker is above falling emojis */
     }
     .header {
       display: flex;
@@ -124,14 +126,23 @@
     }
     select {
       margin-top: 20px;
+      z-index: 101; /* Above emojis */
     }
 
-    /* Make the color picker more obvious on iOS by providing a label and margin */
-    #colorPickerContainer {
+    /* Menu that appears when "I like fun" is selected */
+    #funMenu {
       display: none;
       margin-top: 20px;
       text-align: center;
+      z-index: 101;
     }
+
+    /* The container that holds the color picker and rain checkbox, toggled by a link */
+    #funOptions {
+      display: none;
+      margin-top: 10px;
+    }
+
     #colorPicker {
       width: 60px;
       height: 40px;
@@ -141,26 +152,65 @@
       margin-left: 10px;
       vertical-align: middle;
     }
+
+    /* Keyframes for falling emojis. They fade in then fall quickly to the bottom. */
+    @keyframes gravityFall {
+      0% {
+        transform: translateY(-10%);
+        opacity: 0;
+      }
+      5% {
+        opacity: 0.5;
+      }
+      100% {
+        transform: translateY(120%);
+        opacity: 0.5;
+      }
+    }
+
+    .raindrop {
+      position: fixed;
+      top: -50px;
+      font-size: 24px;
+      opacity: 0.5;
+      animation-name: gravityFall;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+      pointer-events: none;
+    }
   </style>
   <script>
+    let rainInterval = null; // For continuous raining
+
     function changeStickerType() {
       const select = document.getElementById("stickerType");
       const selectedType = select.value;
       const sticker = document.querySelector(".sticker");
-      const colorPickerContainer = document.getElementById("colorPickerContainer");
+      const funMenu = document.getElementById("funMenu");
+
       if (selectedType) {
         localStorage.setItem("stickerType", selectedType);
         sticker.style.transition = "background-color 0.5s ease-in-out";
+
         if (selectedType === "center") {
-          // Hide color picker if previously displayed
-          colorPickerContainer.style.display = "none";
+          funMenu.style.display = "none";
+          stopRain();
           sticker.style.backgroundColor = "#008000";
         } else if (selectedType === "dealer") {
-          colorPickerContainer.style.display = "none";
+          funMenu.style.display = "none";
+          stopRain();
           sticker.style.backgroundColor = "#FFD700";
         } else if (selectedType === "fun") {
-          // Show the color picker container
-          colorPickerContainer.style.display = "block";
+          // Show the fun menu
+          funMenu.style.display = "block";
+          // Load previous color if any
+          const storedColor = localStorage.getItem("stickerColor") || "#008000";
+          sticker.style.backgroundColor = storedColor;
+          // If user had the rain checkbox set, resume raining
+          const wasRaining = localStorage.getItem("rainActive") === "true";
+          if (wasRaining) {
+            document.getElementById("rainCheckbox").checked = true;
+            startRain();
+          }
         }
         select.value = "";
       }
@@ -169,21 +219,24 @@
     function loadStickerType() {
       const storedType = localStorage.getItem("stickerType");
       const sticker = document.querySelector(".sticker");
-      const colorPickerContainer = document.getElementById("colorPickerContainer");
-      // Hide color picker container by default unless user manually chooses "fun"
-      colorPickerContainer.style.display = "none";
+      const funMenu = document.getElementById("funMenu");
 
-      if (storedType) {
-        if (storedType === "center") {
-          sticker.style.backgroundColor = "#008000";
-        } else if (storedType === "dealer") {
-          sticker.style.backgroundColor = "#FFD700";
-        } else if (storedType === "fun") {
-          // load color from localStorage
-          const storedColor = localStorage.getItem("stickerColor") || "#008000";
-          sticker.style.backgroundColor = storedColor;
-          // Show container so user knows they can pick a different color
-          colorPickerContainer.style.display = "block";
+      funMenu.style.display = "none";
+      stopRain();
+
+      if (storedType === "center") {
+        sticker.style.backgroundColor = "#008000";
+      } else if (storedType === "dealer") {
+        sticker.style.backgroundColor = "#FFD700";
+      } else if (storedType === "fun") {
+        funMenu.style.display = "block";
+        const storedColor = localStorage.getItem("stickerColor") || "#008000";
+        sticker.style.backgroundColor = storedColor;
+        // Possibly resume raining
+        const wasRaining = localStorage.getItem("rainActive") === "true";
+        if (wasRaining) {
+          document.getElementById("rainCheckbox").checked = true;
+          startRain();
         }
       }
     }
@@ -223,7 +276,81 @@
       });
     }
 
+    // Repeatedly spawn single drops
+    function startRain() {
+      if (!rainInterval) {
+        // Mark in storage
+        localStorage.setItem("rainActive", "true");
+        rainInterval = setInterval(() => {
+          spawnRaindrop();
+        }, 300); // spawn faster for a heavier rain effect
+      }
+    }
+
+    function stopRain() {
+      if (rainInterval) {
+        clearInterval(rainInterval);
+        rainInterval = null;
+      }
+      // Mark in storage
+      localStorage.setItem("rainActive", "false");
+    }
+
+    function spawnRaindrop() {
+      let rainContainer = document.getElementById('rain-container');
+      if(!rainContainer){
+        rainContainer = document.createElement('div');
+        rainContainer.id = 'rain-container';
+        rainContainer.style.position = 'fixed';
+        rainContainer.style.top = 0;
+        rainContainer.style.left = 0;
+        rainContainer.style.width = '100%';
+        rainContainer.style.height = '100%';
+        rainContainer.style.overflow = 'hidden';
+        rainContainer.style.zIndex = 1;
+        document.body.appendChild(rainContainer);
+      }
+
+      const emojis = ['🚚','🛞','🔧','✅','🧰','🔩','⚙️','📦'];
+      const drop = document.createElement('div');
+      drop.classList.add('raindrop');
+      drop.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      drop.style.left = (Math.random() * 100) + '%';
+      const duration = 2 + Math.random()*3; // 2 to 5 seconds for a faster fall
+      drop.style.animationDuration = duration + 's';
+      // random initial offset so not everything starts at once
+      drop.style.animationDelay = (Math.random()*1) + 's';
+      rainContainer.appendChild(drop);
+
+      // remove the drop after animation completes
+      drop.addEventListener('animationend', () => {
+        drop.remove();
+      });
+    }
+
+    function toggleFunOptions() {
+      const funOptions = document.getElementById('funOptions');
+      const link = document.getElementById('toggleFunOptionsLink');
+      if (funOptions.style.display === 'none') {
+        funOptions.style.display = 'block';
+        link.textContent = 'Hide Fun Options';
+      } else {
+        funOptions.style.display = 'none';
+        link.textContent = 'Show Fun Options';
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      // Rain checkbox logic
+      const rainCheckbox = document.getElementById("rainCheckbox");
+      rainCheckbox.addEventListener('change', function() {
+        if(this.checked) {
+          startRain();
+        } else {
+          stopRain();
+        }
+      });
+
       // Add event listener for color picker
       const colorPicker = document.getElementById("colorPicker");
       colorPicker.addEventListener('input', function() {
@@ -275,6 +402,7 @@
       <span class="week">5</span>
     </div>
   </div>
+
   <select id="stickerType" onchange="changeStickerType()">
     <option value="">Change Sticker Type</option>
     <option value="center">Center</option>
@@ -282,11 +410,19 @@
     <option value="fun">I like fun</option>
   </select>
 
-  <!-- Container holding our color picker for "fun" mode -->
-  <div id="colorPickerContainer">
-    <label for="colorPicker">Tap to choose sticker color:</label>
-    <input type="color" id="colorPicker" name="colorPicker" />
+  <!-- Hidden "fun menu" that appears when "I like fun" is selected -->
+  <div id="funMenu">
+    <a href="#" id="toggleFunOptionsLink" onclick="toggleFunOptions(); return false;">Show Fun Options</a>
+    <div id="funOptions">
+      <div style="margin-bottom: 10px;">
+        <label for="colorPicker">Sticker color:</label>
+        <input type="color" id="colorPicker" name="colorPicker" />
+      </div>
+      <div>
+        <label for="rainCheckbox">Make it rain?</label>
+        <input type="checkbox" id="rainCheckbox" />
+      </div>
+    </div>
   </div>
-
 </body>
 </html>
