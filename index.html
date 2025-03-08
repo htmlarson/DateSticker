@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <!-- 
 
   ********************************************
@@ -13,6 +12,8 @@
 
 
 --> 
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -25,16 +26,22 @@
   <meta property="og:image" content="/stickers_og_image.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <title>Sticker Calendar</title>
+
   <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
     body {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
       background-color: #f0f0f0;
       font-family: Arial, sans-serif;
-      margin: 0;
       flex-direction: column;
+      overflow: hidden;
     }
     @media (prefers-color-scheme: dark) {
       body {
@@ -42,11 +49,14 @@
         color: white;
       }
     }
+
     .date-display {
       font-size: 1.5em;
       font-weight: bold;
       margin-bottom: 10px;
+      z-index: 200;
     }
+
     .sticker {
       background-color: #008000;
       color: black;
@@ -61,12 +71,15 @@
       flex-direction: column;
       justify-content: space-between;
       transition: background-color 0.5s ease-in-out;
+      z-index: 210;
     }
+
     .header {
       display: flex;
       justify-content: space-between;
       font-size: 1.2em;
     }
+
     .location {
       display: flex;
       justify-content: space-between;
@@ -75,6 +88,7 @@
       margin-top: -1em;
       padding-bottom: 2px;
     }
+
     .months {
       display: flex;
       justify-content: space-between;
@@ -85,6 +99,7 @@
       font-size: 1.2em;
       padding: 0 20px;
     }
+
     .weeks {
       display: flex;
       justify-content: space-between;
@@ -92,11 +107,12 @@
       font-size: 1.5em;
       padding: 0 8px;
     }
+
     #name {
-        text-transform: capitalize;
+      text-transform: capitalize;
     }
     #state {
-        text-transform: uppercase;
+      text-transform: uppercase;
     }
 
     .month,
@@ -114,6 +130,7 @@
     .wk-label {
       border: none;
     }
+
     .highlight {
       opacity: 1;
       color: white;
@@ -122,95 +139,281 @@
     .faded {
       opacity: 0.2;
     }
+
     select {
       margin-top: 20px;
+      z-index: 201;
+    }
+
+    #funMenu {
+      display: none;
+      margin-top: 20px;
+      text-align: center;
+      z-index: 202;
+      position: relative;
+    }
+
+    #funOptions {
+      display: none;
+      margin-top: 10px;
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      text-align: left;
+      width: 260px;
+      margin: 10px auto 0 auto;
+    }
+
+    #toggleFunOptionsLink {
+      display: inline-block;
+      background-color: #007bff;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #toggleFunOptionsLink:hover {
+      background-color: #0056b3;
+    }
+
+    #colorPicker {
+      width: 60px;
+      height: 40px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes gravityFall {
+      0% {
+        transform: translateY(-100px);
+        opacity: 0;
+      }
+      15% {
+        opacity: 0.7;
+      }
+      100% {
+        transform: translateY(calc(100vh + 150px));
+        opacity: 0.5;
+      }
+    }
+
+    .raindrop {
+      position: fixed;
+      top: -100px;
+      font-size: 24px;
+      opacity: 0.5;
+      animation-name: gravityFall;
+      animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
+      pointer-events: none;
+    }
+
+    .label-group {
+      margin-bottom: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .label-group label {
+      margin-right: 8px;
+      font-weight: 500;
+    }
+    .label-group input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-left: 5px;
     }
   </style>
+
   <script>
+    let rainInterval = null;
     function changeStickerType() {
       const select = document.getElementById("stickerType");
       const selectedType = select.value;
       const sticker = document.querySelector(".sticker");
-      if (selectedType) {
-        localStorage.setItem("stickerType", selectedType);
-        sticker.style.transition = "background-color 0.5s ease-in-out";
-        if (selectedType === "center") {
-          sticker.style.backgroundColor = "#008000";
-        } else if (selectedType === "dealer") {
-          sticker.style.backgroundColor = "#FFD700";
-        } else if (selectedType === "fun") {
-          // Show the hidden color picker
-          document.getElementById("colorPicker").style.display = "block";
-          // Auto-trigger the color picker
-          document.getElementById("colorPicker").click();
+      const funMenu = document.getElementById("funMenu");
+      if (!selectedType) return;
+      localStorage.setItem("stickerType", selectedType);
+      sticker.style.transition = "background-color 0.5s ease-in-out";
+      if (selectedType === "center") {
+        funMenu.style.display = "none";
+        stopRain();
+        sticker.style.backgroundColor = "#008000";
+      } else if (selectedType === "dealer") {
+        funMenu.style.display = "none";
+        stopRain();
+        sticker.style.backgroundColor = "#FFD700";
+      } else if (selectedType === "fun") {
+        funMenu.style.display = "block";
+        const storedColor = localStorage.getItem("stickerColor") || "#008000";
+        sticker.style.backgroundColor = storedColor;
+        const wasRaining = localStorage.getItem("rainActive") === "true";
+        document.getElementById("rainCheckbox").checked = wasRaining;
+        if (wasRaining) {
+          startRain();
+        } else {
+          stopRain();
         }
-        select.value = "";
       }
+      select.value = "";
     }
-
     function loadStickerType() {
       const storedType = localStorage.getItem("stickerType");
       const sticker = document.querySelector(".sticker");
-      if (storedType) {
-        if (storedType === "center") {
-          sticker.style.backgroundColor = "#008000";
-        } else if (storedType === "dealer") {
-          sticker.style.backgroundColor = "#FFD700";
-        } else if (storedType === "fun") {
-          // load color from localStorage
-          const storedColor = localStorage.getItem("stickerColor") || "#008000";
-          sticker.style.backgroundColor = storedColor;
-          document.getElementById("colorPicker").style.display = "block";
+      const funMenu = document.getElementById("funMenu");
+      if (!storedType) {
+        funMenu.style.display = "none";
+        stopRain();
+        return;
+      }
+      if (storedType === "center") {
+        funMenu.style.display = "none";
+        stopRain();
+        sticker.style.backgroundColor = "#008000";
+      } else if (storedType === "dealer") {
+        funMenu.style.display = "none";
+        stopRain();
+        sticker.style.backgroundColor = "#FFD700";
+      } else if (storedType === "fun") {
+        funMenu.style.display = "block";
+        const storedColor = localStorage.getItem("stickerColor") || "#008000";
+        sticker.style.backgroundColor = storedColor;
+        const wasRaining = localStorage.getItem("rainActive") === "true";
+        document.getElementById("rainCheckbox").checked = wasRaining;
+        if (wasRaining) {
+          startRain();
+        } else {
+          stopRain();
         }
+      } else {
+        funMenu.style.display = "none";
+        stopRain();
       }
     }
-
+    function getLastSunday(date) {
+      const cloned = new Date(date.getTime());
+      const day = cloned.getDay();
+      cloned.setHours(0,0,0,0);
+      cloned.setDate(cloned.getDate() - day);
+      return cloned;
+    }
+    function getFirstSundayOfMonth(year, month){
+      const d = new Date(year, month, 1);
+      while(d.getDay() !== 0) {
+        d.setDate(d.getDate() + 1);
+      }
+      return d;
+    }
     function highlightDate() {
-      const currentDate = new Date();
-      const monthIndex = currentDate.getMonth();
-      const week = Math.ceil(currentDate.getDate() / 7);
-      const monthElements = document.querySelectorAll('.month');
-      const weekElements = document.querySelectorAll('.week');
-
-      monthElements.forEach((el, index) => {
-        setTimeout(() => {
-          el.classList.toggle('highlight', index === monthIndex);
-          el.classList.toggle('faded', index !== monthIndex);
-        }, 100);
+      const now = new Date();
+      const lastSun = getLastSunday(now);
+      const highlightMonth = lastSun.getMonth();
+      const highlightYear = lastSun.getFullYear();
+      const monthEls = document.querySelectorAll('.month');
+      monthEls.forEach((m, idx) => {
+        const isCurr = (idx === highlightMonth);
+        m.classList.toggle('highlight', isCurr);
+        m.classList.toggle('faded', !isCurr);
       });
-
-      weekElements.forEach((el, index) => {
-        setTimeout(() => {
-          el.classList.toggle('highlight', index === week - 1);
-          el.classList.toggle('faded', index !== week - 1);
-        }, 100);
+      const firstSun = getFirstSundayOfMonth(highlightYear, highlightMonth);
+      const dayOfFirstSun = firstSun.getDate();
+      const dayInQuestion = lastSun.getDate();
+      let diff = dayInQuestion - dayOfFirstSun;
+      if(diff < 0) {
+        diff = 0;
+      }
+      const rawWeek = Math.floor(diff / 7);
+      const userWeek = rawWeek + 1;
+      let weekIndex = userWeek - 1;
+      if(weekIndex < 0) weekIndex=0;
+      if(weekIndex>4) weekIndex=4;
+      const weekEls = document.querySelectorAll('.week');
+      weekEls.forEach((wk, i) => {
+        const isH = (i===weekIndex);
+        wk.classList.toggle('highlight', isH);
+        wk.classList.toggle('faded', !isH);
       });
     }
-
     function saveField(id) {
       localStorage.setItem(id, document.getElementById(id).innerText);
     }
-
     function loadFields() {
-      ['name', 'location-number', 'state'].forEach(id => {
-        const storedValue = localStorage.getItem(id);
-        if (storedValue) {
-          document.getElementById(id).innerText = storedValue;
+      ["name", "location-number", "state"].forEach(id => {
+        const val = localStorage.getItem(id);
+        if(val){
+          document.getElementById(id).innerText = val;
         }
       });
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      // Add event listener for color picker
-      const colorPicker = document.getElementById("colorPicker");
-      colorPicker.addEventListener('input', function() {
-        const sticker = document.querySelector(".sticker");
-        sticker.style.backgroundColor = this.value;
-        localStorage.setItem("stickerColor", this.value);
-        localStorage.setItem("stickerType", "fun");
+    function startRain() {
+      if(!rainInterval){
+        localStorage.setItem('rainActive','true');
+        rainInterval = setInterval(spawnRaindrop, 500);
+      }
+    }
+    function stopRain(){
+      if(rainInterval){
+        clearInterval(rainInterval);
+        rainInterval=null;
+      }
+      localStorage.setItem('rainActive','false');
+    }
+    function spawnRaindrop(){
+      let rc=document.getElementById('rain-container');
+      if(!rc){
+        rc=document.createElement('div');
+        rc.id='rain-container';
+        rc.style.position='fixed';
+        rc.style.top='0';
+        rc.style.left='0';
+        rc.style.width='100%';
+        rc.style.height='100%';
+        rc.style.overflow='hidden';
+        rc.style.zIndex='1';
+        document.body.appendChild(rc);
+      }
+      const emojis=['🚚','🛞','🔧','✅','🧰','🔩','⚙️','📦'];
+      const drop=document.createElement('div');
+      drop.classList.add('raindrop');
+      drop.textContent= emojis[Math.floor(Math.random()*emojis.length)];
+      drop.style.left=(Math.random()*100)+'%';
+      const dur=3+Math.random()*2;
+      drop.style.animationDuration= dur+'s';
+      drop.style.animationDelay=(Math.random()*0.5)+'s';
+      rc.appendChild(drop);
+      drop.addEventListener('animationend',()=>drop.remove());
+    }
+    function toggleFunOptions(ev){
+      ev.preventDefault();
+      const funOpts=document.getElementById('funOptions');
+      const lnk=document.getElementById('toggleFunOptionsLink');
+      if(funOpts.style.display==='none'){
+        funOpts.style.display='block';
+        lnk.textContent='Hide Fun Options';
+      } else{
+        funOpts.style.display='none';
+        lnk.textContent='Show Fun Options';
+      }
+    }
+    document.addEventListener('DOMContentLoaded',()=>{
+      document.getElementById('toggleFunOptionsLink').addEventListener('click',toggleFunOptions);
+      document.getElementById('rainCheckbox').addEventListener('change',function(){
+        if(this.checked){startRain();} else{stopRain();}
       });
-
-      document.getElementById('date-display').innerText = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      document.getElementById('colorPicker').addEventListener('input',function(){
+        document.querySelector('.sticker').style.backgroundColor=this.value;
+        localStorage.setItem('stickerColor',this.value);
+        localStorage.setItem('stickerType','fun');
+      });
+      document.getElementById('date-display').innerText= new Date().toLocaleDateString('en-US',{
+        year:'numeric',month:'2-digit',day:'2-digit'
+      });
       loadStickerType();
       highlightDate();
       loadFields();
@@ -256,11 +459,20 @@
     <option value="">Change Sticker Type</option>
     <option value="center">Center</option>
     <option value="dealer">Dealer</option>
-    <option value="fun">I like fun</option>
+    <option value="fun">I want fun</option>
   </select>
-
-  <!-- Hidden color picker that will appear if "I like fun" is chosen -->
-  <input type="color" id="colorPicker" name="colorPicker" style="display:none;" />
-
+  <div id="funMenu">
+    <a href="#" id="toggleFunOptionsLink">Show Fun Options</a>
+    <div id="funOptions" style="display:none;">
+      <div class="label-group">
+        <label for="colorPicker">Sticker color:</label>
+        <input type="color" id="colorPicker" name="colorPicker" />
+      </div>
+      <div class="label-group">
+        <label for="rainCheckbox">Make it rain?</label>
+        <input type="checkbox" id="rainCheckbox" />
+      </div>
+    </div>
+  </div>
 </body>
 </html>
