@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<!-- 
+
+  ********************************************
+  * I verify that this feature should        *
+  * already exist inside POS:                *
+  *                                          *
+  * ✅ VERIFIED                              *
+  * Made by Andrew Larson                    *
+  * With help from ChatGPT                   *
+  ********************************************
+
+
+--> 
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="no"/>
+  <meta name="apple-mobile-web-app-title" content="Stickers!"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="Stickers! A Quick, Visual Month and Week Reference"/>
+  <meta property="og:description" content="A quick, visual refrence for the current month/week to put on your verification sticker.">
+  <meta property="og:image" content="/stickers_og_image.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <title>Sticker Calendar</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      flex-direction: column;
+    }
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #070D0D;
+        color: white;
+      }
+    }
+    .date-display {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .sticker {
+      background-color: #008000;
+      color: black;
+      width: 350px;
+      height: 202px;
+      padding: 10px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 5px 5px 10px rgba(0,0,0,0.2);
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background-color 0.5s ease-in-out;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.2em;
+    }
+    .location {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.1em;
+      border-bottom: 3px solid black;
+      margin-top: -1em;
+      padding-bottom: 2px;
+    }
+    .months {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.4em;
+      padding: 0 8px;
+    }
+    .months.second-row {
+      font-size: 1.2em;
+      padding: 0 20px;
+    }
+    .weeks {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.5em;
+      padding: 0 8px;
+    }
+    #name {
+        text-transform: capitalize;
+    }
+    #state {
+        text-transform: uppercase;
+    }
+
+    .month,
+    .week,
+    .wk-label {
+      border: 2px hidden black;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 5s ease-in-out;
+    }
+    .wk-label {
+      border: none;
+    }
+    .highlight {
+      opacity: 1;
+      color: white;
+      background-color: black;
+    }
+    .faded {
+      opacity: 0.2;
+    }
+    select {
+      margin-top: 20px;
+    }
+  </style>
+  <script nonce="Mzg4NTg2MDc5NSwzMjg4MDYzMTc4" type="0df6da390f3b722a5ed00135-text/javascript">
+    function changeStickerType() {
+      const select = document.getElementById("stickerType");
+      const selectedType = select.value;
+      if (selectedType) {
+        localStorage.setItem("stickerType", selectedType);
+        const sticker = document.querySelector(".sticker");
+        sticker.style.transition = "background-color 0.5s ease-in-out";
+        sticker.style.backgroundColor = selectedType === "center" ? "#008000" : "#FFD700";
+        select.value = "";
+      }
+    }
+
+    function loadStickerType() {
+      const storedType = localStorage.getItem("stickerType");
+      if (storedType) {
+        document.querySelector(".sticker").style.backgroundColor = storedType === "center" ? "#008000" : "#FFD700";
+      }
+    }
+
+    function highlightDate() {
+      const currentDate = new Date();
+      const monthIndex = currentDate.getMonth();
+      const week = Math.ceil(currentDate.getDate() / 7);
+      const monthElements = document.querySelectorAll('.month');
+      const weekElements = document.querySelectorAll('.week');
+      
+      monthElements.forEach((el, index) => {
+        setTimeout(() => {
+          el.classList.toggle('highlight', index === monthIndex);
+          el.classList.toggle('faded', index !== monthIndex);
+        }, 100);
+      });
+      
+      weekElements.forEach((el, index) => {
+        setTimeout(() => {
+          el.classList.toggle('highlight', index === week - 1);
+          el.classList.toggle('faded', index !== week - 1);
+        }, 100);
+      });
+    }
+
+    function saveField(id) {
+      localStorage.setItem(id, document.getElementById(id).innerText);
+    }
+
+    function loadFields() {
+      ['name', 'location-number', 'state'].forEach(id => {
+        const storedValue = localStorage.getItem(id);
+        if (storedValue) {
+          document.getElementById(id).innerText = storedValue;
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('date-display').innerText = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      loadStickerType();
+      highlightDate();
+      loadFields();
+    });
+  </script>
+</head>
+<body>
+  <div class="date-display" id="date-display"></div>
+  <div class="sticker">
+    <div class="header">
+      <span id="name" contenteditable="true" onblur="if (!window.__cfRLUnblockHandlers) return false; saveField('name')" data-cf-modified-0df6da390f3b722a5ed00135-="">Doe, John</span>
+    </div>
+    <div class="location">
+      <span id="location-number" contenteditable="true" onblur="if (!window.__cfRLUnblockHandlers) return false; saveField('location-number')" data-cf-modified-0df6da390f3b722a5ed00135-="">759-059</span>
+      <span id="state" contenteditable="true" onblur="if (!window.__cfRLUnblockHandlers) return false; saveField('state')" data-cf-modified-0df6da390f3b722a5ed00135-="">AZ</span>
+    </div>
+    <div class="months">
+      <span class="month">J</span>
+      <span class="month">F</span>
+      <span class="month">M</span>
+      <span class="month">A</span>
+      <span class="month">M</span>
+      <span class="month">J</span>
+    </div>
+    <div class="months second-row">
+      <span class="month">J</span>
+      <span class="month">A</span>
+      <span class="month">S</span>
+      <span class="month">O</span>
+      <span class="month">N</span>
+      <span class="month">D</span>
+    </div>
+    <div class="weeks">
+      <span class="wk-label">(WK)</span>
+      <span class="week">1</span>
+      <span class="week">2</span>
+      <span class="week">3</span>
+      <span class="week">4</span>
+      <span class="week">5</span>
+    </div>
+  </div>
+  <select id="stickerType" onchange="if (!window.__cfRLUnblockHandlers) return false; changeStickerType()" data-cf-modified-0df6da390f3b722a5ed00135-="">
+    <option value="">Change Sticker Type</option>
+    <option value="center">Center</option>
+    <option value="dealer">Dealer</option>
+  </select>
+<script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="0df6da390f3b722a5ed00135-|49" defer></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"rayId":"91ce1d24c9b75c17","version":"2025.1.0","r":1,"token":"ccc47a75c7584a6aba181764819ad1a9","serverTiming":{"name":{"cfExtPri":true,"cfL4":true,"cfSpeedBrain":true,"cfCacheStatus":true}}}' crossorigin="anonymous"></script>
+</body>
+</html>
