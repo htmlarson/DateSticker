@@ -126,23 +126,42 @@
       margin-top: 20px;
     }
   </style>
-  <script nonce="Mzg4NTg2MDc5NSwzMjg4MDYzMTc4" type="0df6da390f3b722a5ed00135-text/javascript">
+  <script>
     function changeStickerType() {
       const select = document.getElementById("stickerType");
       const selectedType = select.value;
+      const sticker = document.querySelector(".sticker");
       if (selectedType) {
         localStorage.setItem("stickerType", selectedType);
-        const sticker = document.querySelector(".sticker");
         sticker.style.transition = "background-color 0.5s ease-in-out";
-        sticker.style.backgroundColor = selectedType === "center" ? "#008000" : "#FFD700";
+        if (selectedType === "center") {
+          sticker.style.backgroundColor = "#008000";
+        } else if (selectedType === "dealer") {
+          sticker.style.backgroundColor = "#FFD700";
+        } else if (selectedType === "fun") {
+          // Show the hidden color picker
+          document.getElementById("colorPicker").style.display = "block";
+          // Auto-trigger the color picker
+          document.getElementById("colorPicker").click();
+        }
         select.value = "";
       }
     }
 
     function loadStickerType() {
       const storedType = localStorage.getItem("stickerType");
+      const sticker = document.querySelector(".sticker");
       if (storedType) {
-        document.querySelector(".sticker").style.backgroundColor = storedType === "center" ? "#008000" : "#FFD700";
+        if (storedType === "center") {
+          sticker.style.backgroundColor = "#008000";
+        } else if (storedType === "dealer") {
+          sticker.style.backgroundColor = "#FFD700";
+        } else if (storedType === "fun") {
+          // load color from localStorage
+          const storedColor = localStorage.getItem("stickerColor") || "#008000";
+          sticker.style.backgroundColor = storedColor;
+          document.getElementById("colorPicker").style.display = "block";
+        }
       }
     }
 
@@ -152,14 +171,14 @@
       const week = Math.ceil(currentDate.getDate() / 7);
       const monthElements = document.querySelectorAll('.month');
       const weekElements = document.querySelectorAll('.week');
-      
+
       monthElements.forEach((el, index) => {
         setTimeout(() => {
           el.classList.toggle('highlight', index === monthIndex);
           el.classList.toggle('faded', index !== monthIndex);
         }, 100);
       });
-      
+
       weekElements.forEach((el, index) => {
         setTimeout(() => {
           el.classList.toggle('highlight', index === week - 1);
@@ -182,6 +201,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Add event listener for color picker
+      const colorPicker = document.getElementById("colorPicker");
+      colorPicker.addEventListener('input', function() {
+        const sticker = document.querySelector(".sticker");
+        sticker.style.backgroundColor = this.value;
+        localStorage.setItem("stickerColor", this.value);
+        localStorage.setItem("stickerType", "fun");
+      });
+
       document.getElementById('date-display').innerText = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
       loadStickerType();
       highlightDate();
@@ -193,11 +221,11 @@
   <div class="date-display" id="date-display"></div>
   <div class="sticker">
     <div class="header">
-      <span id="name" contenteditable="true" onblur="if (!window.__cfRLUnblockHandlers) return false; saveField('name')" data-cf-modified-0df6da390f3b722a5ed00135-="">Doe, John</span>
+      <span id="name" contenteditable="true" onblur="saveField('name')">Doe, John</span>
     </div>
     <div class="location">
-      <span id="location-number" contenteditable="true" onblur="if (!window.__cfRLUnblockHandlers) return false; saveField('location-number')" data-cf-modified-0df6da390f3b722a5ed00135-="">759-059</span>
-      <span id="state" contenteditable="true" onblur="if (!window.__cfRLUnblockHandlers) return false; saveField('state')" data-cf-modified-0df6da390f3b722a5ed00135-="">AZ</span>
+      <span id="location-number" contenteditable="true" onblur="saveField('location-number')">759-059</span>
+      <span id="state" contenteditable="true" onblur="saveField('state')">AZ</span>
     </div>
     <div class="months">
       <span class="month">J</span>
@@ -224,11 +252,15 @@
       <span class="week">5</span>
     </div>
   </div>
-  <select id="stickerType" onchange="if (!window.__cfRLUnblockHandlers) return false; changeStickerType()" data-cf-modified-0df6da390f3b722a5ed00135-="">
+  <select id="stickerType" onchange="changeStickerType()">
     <option value="">Change Sticker Type</option>
     <option value="center">Center</option>
     <option value="dealer">Dealer</option>
+    <option value="fun">I like fun</option>
   </select>
-<script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="0df6da390f3b722a5ed00135-|49" defer></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"rayId":"91ce1d24c9b75c17","version":"2025.1.0","r":1,"token":"ccc47a75c7584a6aba181764819ad1a9","serverTiming":{"name":{"cfExtPri":true,"cfL4":true,"cfSpeedBrain":true,"cfCacheStatus":true}}}' crossorigin="anonymous"></script>
+
+  <!-- Hidden color picker that will appear if "I like fun" is chosen -->
+  <input type="color" id="colorPicker" name="colorPicker" style="display:none;" />
+
 </body>
 </html>
