@@ -622,7 +622,18 @@
       if (dp) {
         dp.addEventListener('change', updateDateAndHighlights);
       }
-      // Big date is a label for dp; iOS will open the picker
+      // Big date is a label for dp. Also try showPicker() where supported (e.g., Chrome Desktop).
+      const cd = document.getElementById('current-date');
+      if (cd && dp) {
+        cd.style.cursor = 'pointer';
+        cd.title = 'Click to change date';
+        cd.addEventListener('click', (e) => {
+          if (typeof dp.showPicker === 'function') {
+            e.preventDefault();
+            dp.showPicker();
+          }
+        });
+      }
 
       const printBtn = document.getElementById('printBtn');
       if (printBtn) {
