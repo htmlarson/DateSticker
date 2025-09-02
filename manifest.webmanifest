@@ -1,0 +1,12 @@
+{
+  "name": "Stickers! A Quick, Visual Month and Week Reference",
+  "short_name": "Stickers",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#008000",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon.ico", "sizes": "48x48 32x32 16x16", "type": "image/x-icon" }
+  ]
+}
