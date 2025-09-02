@@ -72,13 +72,13 @@
       letter-spacing: 0.5px;
       text-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
-    /* Hide the native date input; we trigger it from the big text */
+    /* Hide the native date input; triggered via associated label */
     .date-display input[type="date"] {
       position: absolute;
       opacity: 0;
       width: 1px;
       height: 1px;
-      pointer-events: none;
+      /* Keep focusable/clickable for iOS via label */
     }
 
     .sticker {
@@ -622,21 +622,7 @@
       if (dp) {
         dp.addEventListener('change', updateDateAndHighlights);
       }
-
-      // Make the big date open the native picker
-      const cd = document.getElementById('current-date');
-      if (cd && dp) {
-        cd.style.cursor = 'pointer';
-        cd.title = 'Click to change date';
-        cd.addEventListener('click', () => {
-          if (typeof dp.showPicker === 'function') {
-            dp.showPicker();
-          } else {
-            dp.focus();
-            dp.click();
-          }
-        });
-      }
+      // Big date is a label for dp; iOS will open the picker
 
       const printBtn = document.getElementById('printBtn');
       if (printBtn) {
@@ -651,7 +637,7 @@
 </head>
 <body>
   <div class="date-display">
-    <div id="current-date" class="current-date"></div>
+    <label id="current-date" class="current-date" for="datePicker"></label>
     <input type="date" id="datePicker" />
   </div>
   <div class="sticker">
