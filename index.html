@@ -7,7 +7,7 @@
   * ✅ VERIFIED                              *
   * Made by Andrew Larson                    *
   * With help from ChatGPT                   *
-  * Version 1.2.2                            *
+  * Version 1.5.                             *
   ********************************************
 
 
@@ -18,8 +18,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="initial-scale=1.0, width=device-width, user-scalable=no"/>
-  <meta name="apple-mobile-web-app-capable" content="no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="Stickers!"/>
+  <meta name="theme-color" content="#008000"/>
+  <link rel="manifest" href="manifest.webmanifest">
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="Stickers! A Quick, Visual Month and Week Reference"/>
   <meta property="og:description" content="A quick, visual refrence for the current month/week to put on your verification sticker.">
@@ -59,14 +61,31 @@
       font-weight: bold;
       margin-bottom: 10px;
       z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
     }
+    .date-head { position: relative; display: inline-block; }
+    /* Default: hide date input visually but keep in DOM */
+    .date-display input[type="date"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    /* iOS: overlay input over big date, so taps hit the real input */
+    body.ios-overlay .date-head input[type="date"] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; pointer-events: auto; }
+    .current-date {
+      font-size: clamp(22px, 5.5vw, 32px);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    /* Input overlay handled by .date-head styles */
 
     .sticker {
       background-color: #008000;
       opacity: .85;
       color: black;
-      width: 350px;
-      height: 202px;
+      width: min(350px, 90vw);
+      aspect-ratio: 350 / 202;
+      height: auto;
       padding: 10px;
       border-radius: 15px;
       text-align: center;
@@ -77,6 +96,7 @@
       justify-content: space-between;
       transition: background-color 0.5s ease-in-out;
       z-index: 210;
+      font-size: clamp(12px, 3.2vw, 16px);
     }
 
     .header {
@@ -233,10 +253,68 @@
       transform: scale(1.2);
       margin-left: 5px;
     }
+
+    /* Whimsical effects */
+    .sticker.glow {
+      animation: glowPulse 2.2s ease-in-out infinite;
+    }
+    @keyframes glowPulse {
+      0% { box-shadow: 0 0 6px rgba(255,255,255,0.2), 0 0 0 0 rgba(255,255,255,0.0); }
+      50% { box-shadow: 0 0 14px rgba(255,255,255,0.6), 0 0 24px 4px rgba(255,255,255,0.25); }
+      100% { box-shadow: 0 0 6px rgba(255,255,255,0.2), 0 0 0 0 rgba(255,255,255,0.0); }
+    }
+
+    .sticker.wiggle {
+      animation: wiggle 2s ease-in-out infinite;
+      transform-origin: center center;
+    }
+    @keyframes wiggle {
+      0%   { transform: rotate(0deg); }
+      20%  { transform: rotate(1.2deg); }
+      40%  { transform: rotate(0deg); }
+      60%  { transform: rotate(-1.2deg); }
+      80%  { transform: rotate(0deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .confetti {
+      position: fixed;
+      font-size: 1.4rem;
+      pointer-events: none;
+      will-change: transform, opacity;
+      z-index: 300;
+      animation-name: confettiBurst;
+      animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+      animation-fill-mode: forwards;
+    }
+    @keyframes confettiBurst {
+      0% { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx, 0px), var(--dy, -200px)) rotate(var(--rot, 360deg)) scale(0.9); opacity: 0; }
+    }
+
+    /* Print styles */
+    @media print {
+      html, body {
+        background: white !important;
+        height: auto;
+        overflow: visible;
+      }
+      #stickerType, #funMenu, #printBtn, .date-display, #rain-container { display: none !important; }
+      .sticker {
+        box-shadow: none;
+        margin: 0 auto;
+        width: 90vw;
+        max-width: 700px;
+        aspect-ratio: 350 / 202;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
   </style>
 
   <script>
     let rainInterval = null;
+    let midnightTimer = null;
     function changeStickerType() {
       const select = document.getElementById("stickerType");
       const selectedType = select.value;
@@ -249,10 +327,14 @@
         funMenu.style.display = "none";
         stopRain();
         sticker.style.backgroundColor = "#008000";
+        setGlow(false);
+        setWiggle(false);
       } else if (selectedType === "dealer") {
         funMenu.style.display = "none";
         stopRain();
         sticker.style.backgroundColor = "#FFD700";
+        setGlow(false);
+        setWiggle(false);
       } else if (selectedType === "fun") {
         funMenu.style.display = "block";
         const storedColor = localStorage.getItem("stickerColor") || "#008000";
@@ -264,6 +346,13 @@
         } else {
           stopRain();
         }
+        // Apply persisted whimsical toggles
+        const glow = localStorage.getItem('glowActive') === 'true';
+        const wig = localStorage.getItem('wiggleActive') === 'true';
+        document.getElementById('glowCheckbox').checked = glow;
+        document.getElementById('wiggleCheckbox').checked = wig;
+        setGlow(glow);
+        setWiggle(wig);
       }
       select.value = "";
     }
@@ -280,10 +369,14 @@
         funMenu.style.display = "none";
         stopRain();
         sticker.style.backgroundColor = "#008000";
+        setGlow(false);
+        setWiggle(false);
       } else if (storedType === "dealer") {
         funMenu.style.display = "none";
         stopRain();
         sticker.style.backgroundColor = "#FFD700";
+        setGlow(false);
+        setWiggle(false);
       } else if (storedType === "fun") {
         funMenu.style.display = "block";
         const storedColor = localStorage.getItem("stickerColor") || "#008000";
@@ -295,9 +388,17 @@
         } else {
           stopRain();
         }
+        const glow = localStorage.getItem('glowActive') === 'true';
+        const wig = localStorage.getItem('wiggleActive') === 'true';
+        document.getElementById('glowCheckbox').checked = glow;
+        document.getElementById('wiggleCheckbox').checked = wig;
+        setGlow(glow);
+        setWiggle(wig);
       } else {
         funMenu.style.display = "none";
         stopRain();
+        setGlow(false);
+        setWiggle(false);
       }
     }
     function getLastSunday(date) {
@@ -314,8 +415,8 @@
       }
       return d;
     }
-    function highlightDate() {
-      const now = new Date();
+    function highlightDate(dateOverride) {
+      const now = dateOverride instanceof Date ? new Date(dateOverride) : new Date();
       const lastSun = getLastSunday(now);
       const highlightMonth = lastSun.getMonth();
       const highlightYear = lastSun.getFullYear();
@@ -354,6 +455,52 @@
           document.getElementById(id).innerText = val;
         }
       });
+    }
+    function updateDateAndHighlights() {
+      const dp = document.getElementById('datePicker');
+      let effDate = new Date();
+      if (dp && dp.value) {
+        // Use selected date (YYYY-MM-DD)
+        const parts = dp.value.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const d = parseInt(parts[2], 10);
+          effDate = new Date(y, m, d);
+        }
+      }
+      // Update big date text to reflect the effective date
+      const cd = document.getElementById('current-date');
+      if (cd) {
+        cd.innerText = effDate.toLocaleDateString('en-US', {
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+      }
+      // Highlight based on the effective date
+      highlightDate(effDate);
+    }
+
+    function setDatePickerToTodayIfEmpty() {
+      const dp = document.getElementById('datePicker');
+      if (!dp) return;
+      if (!dp.value) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        dp.value = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+    function scheduleMidnightRefresh(){
+      if(midnightTimer) clearTimeout(midnightTimer);
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(24,0,0,0);
+      const ms = next - now;
+      midnightTimer = setTimeout(()=>{
+        updateDateAndHighlights();
+        scheduleMidnightRefresh();
+      }, ms);
     }
     function startRain() {
       if(!rainInterval){
@@ -405,27 +552,110 @@
         lnk.textContent='Show Fun Options';
       }
     }
+    function setGlow(active){
+      const sticker = document.querySelector('.sticker');
+      sticker.classList.toggle('glow', !!active);
+      localStorage.setItem('glowActive', active ? 'true' : 'false');
+    }
+    function setWiggle(active){
+      const sticker = document.querySelector('.sticker');
+      sticker.classList.toggle('wiggle', !!active);
+      localStorage.setItem('wiggleActive', active ? 'true' : 'false');
+    }
+    function burstConfetti(){
+      const sticker = document.querySelector('.sticker');
+      if(!sticker) return;
+      const rect = sticker.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const count = 40;
+      const emojis = ['✨','🎉','🎈','⭐️','💥','🎊','💫'];
+      for(let i=0;i<count;i++){
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.textContent = emojis[(Math.random()*emojis.length)|0];
+        el.style.left = cx + 'px';
+        el.style.top = cy + 'px';
+        const angle = Math.random()*Math.PI*2;
+        const dist = 120 + Math.random()*220;
+        const dx = Math.cos(angle)*dist;
+        const dy = Math.sin(angle)*dist * -1; // upward positive
+        const rot = (Math.random()*720-360)|0;
+        el.style.setProperty('--dx', dx.toFixed(1)+'px');
+        el.style.setProperty('--dy', dy.toFixed(1)+'px');
+        el.style.setProperty('--rot', rot+'deg');
+        el.style.animationDuration = (0.9 + Math.random()*1.2).toFixed(2)+'s';
+        document.body.appendChild(el);
+        el.addEventListener('animationend', ()=> el.remove());
+      }
+    }
     document.addEventListener('DOMContentLoaded',()=>{
       document.getElementById('toggleFunOptionsLink').addEventListener('click',toggleFunOptions);
       document.getElementById('rainCheckbox').addEventListener('change',function(){
         if(this.checked){startRain();} else{stopRain();}
+      });
+      document.getElementById('glowCheckbox').addEventListener('change',function(){
+        setGlow(!!this.checked);
+      });
+      document.getElementById('wiggleCheckbox').addEventListener('change',function(){
+        setWiggle(!!this.checked);
+      });
+      document.getElementById('confettiBtn').addEventListener('click', function(e){
+        e.preventDefault();
+        burstConfetti();
       });
       document.getElementById('colorPicker').addEventListener('input',function(){
         document.querySelector('.sticker').style.backgroundColor=this.value;
         localStorage.setItem('stickerColor',this.value);
         localStorage.setItem('stickerType','fun');
       });
-      document.getElementById('date-display').innerText= new Date().toLocaleDateString('en-US',{
-        year:'numeric',month:'2-digit',day:'2-digit'
-      });
+      // Initialize date picker if empty, then update highlights
+      setDatePickerToTodayIfEmpty();
+      updateDateAndHighlights();
+      scheduleMidnightRefresh();
       loadStickerType();
-      highlightDate();
       loadFields();
+
+      const dp = document.getElementById('datePicker');
+      if (dp) {
+        dp.addEventListener('change', updateDateAndHighlights);
+      }
+      // Detect iOS/iPadOS Safari and enable input overlay tapping
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        document.body.classList.add('ios-overlay');
+      }
+      // Big date is a label for dp. Also try showPicker() where supported (e.g., Chrome Desktop).
+      const cd = document.getElementById('current-date');
+      if (cd && dp) {
+        cd.style.cursor = 'pointer';
+        cd.title = 'Click to change date';
+        cd.addEventListener('click', (e) => {
+          if (typeof dp.showPicker === 'function') {
+            e.preventDefault();
+            dp.showPicker();
+          }
+        });
+      }
+
+      const printBtn = document.getElementById('printBtn');
+      if (printBtn) {
+        printBtn.addEventListener('click', ()=> window.print());
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(()=>{});
+      }
     });
   </script>
 </head>
 <body>
-  <div class="date-display" id="date-display"></div>
+  <div class="date-display">
+    <div class="date-head">
+      <label id="current-date" class="current-date" for="datePicker"></label>
+      <input type="date" id="datePicker" />
+    </div>
+  </div>
   <div class="sticker">
     <div class="header">
       <span id="name" contenteditable="true" onblur="saveField('name')">Doe, John</span>
@@ -459,6 +689,7 @@
       <span class="week">5</span>
     </div>
   </div>
+  <button id="printBtn" style="margin-top:10px;">Print</button>
   <select id="stickerType" onchange="changeStickerType()">
     <option value="">Change Sticker Type</option>
     <option value="center">Center</option>
@@ -475,6 +706,18 @@
       <div class="label-group">
         <label for="rainCheckbox">Make it rain?</label>
         <input type="checkbox" id="rainCheckbox" />
+      </div>
+      <div class="label-group">
+        <label for="glowCheckbox">Glow pulse</label>
+        <input type="checkbox" id="glowCheckbox" />
+      </div>
+      <div class="label-group">
+        <label for="wiggleCheckbox">Wiggle</label>
+        <input type="checkbox" id="wiggleCheckbox" />
+      </div>
+      <div class="label-group">
+        <label for="confettiBtn">Confetti burst</label>
+        <button id="confettiBtn" style="margin-left:auto;">Burst!</button>
       </div>
     </div>
   </div>
