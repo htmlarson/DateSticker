@@ -399,8 +399,8 @@
       }
       return d;
     }
-    function highlightDate() {
-      const now = new Date();
+    function highlightDate(dateOverride) {
+      const now = dateOverride instanceof Date ? new Date(dateOverride) : new Date();
       const lastSun = getLastSunday(now);
       const highlightMonth = lastSun.getMonth();
       const highlightYear = lastSun.getFullYear();
@@ -441,13 +441,31 @@
       });
     }
     function updateDateAndHighlights() {
-      const el = document.getElementById('date-display');
-      if (el) {
-        el.innerText = new Date().toLocaleDateString('en-US', {
-          year: 'numeric', month: '2-digit', day: '2-digit'
-        });
+      const dp = document.getElementById('datePicker');
+      let effDate = new Date();
+      if (dp && dp.value) {
+        // Use selected date (YYYY-MM-DD)
+        const parts = dp.value.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const d = parseInt(parts[2], 10);
+          effDate = new Date(y, m, d);
+        }
       }
-      highlightDate();
+      highlightDate(effDate);
+    }
+
+    function setDatePickerToTodayIfEmpty() {
+      const dp = document.getElementById('datePicker');
+      if (!dp) return;
+      if (!dp.value) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        dp.value = `${yyyy}-${mm}-${dd}`;
+      }
     }
     function scheduleMidnightRefresh(){
       if(midnightTimer) clearTimeout(midnightTimer);
@@ -567,10 +585,17 @@
         localStorage.setItem('stickerColor',this.value);
         localStorage.setItem('stickerType','fun');
       });
+      // Initialize date picker if empty, then update highlights
+      setDatePickerToTodayIfEmpty();
       updateDateAndHighlights();
       scheduleMidnightRefresh();
       loadStickerType();
       loadFields();
+
+      const dp = document.getElementById('datePicker');
+      if (dp) {
+        dp.addEventListener('change', updateDateAndHighlights);
+      }
 
       const printBtn = document.getElementById('printBtn');
       if (printBtn) {
@@ -584,7 +609,9 @@
   </script>
 </head>
 <body>
-  <div class="date-display" id="date-display"></div>
+  <div class="date-display">
+    <input type="date" id="datePicker" />
+  </div>
   <div class="sticker">
     <div class="header">
       <span id="name" contenteditable="true" onblur="saveField('name')">Doe, John</span>
