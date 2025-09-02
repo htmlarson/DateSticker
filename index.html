@@ -61,6 +61,22 @@
       font-weight: bold;
       margin-bottom: 10px;
       z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .current-date {
+      font-size: clamp(22px, 5.5vw, 32px);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .date-display input[type="date"] {
+      font-size: 14px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
     }
 
     .sticker {
@@ -456,6 +472,14 @@
       highlightDate(effDate);
     }
 
+    function updateTodayText() {
+      const el = document.getElementById('current-date');
+      if (!el) return;
+      el.innerText = new Date().toLocaleDateString('en-US', {
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      });
+    }
+
     function setDatePickerToTodayIfEmpty() {
       const dp = document.getElementById('datePicker');
       if (!dp) return;
@@ -474,6 +498,7 @@
       next.setHours(24,0,0,0);
       const ms = next - now;
       midnightTimer = setTimeout(()=>{
+        updateTodayText();
         updateDateAndHighlights();
         scheduleMidnightRefresh();
       }, ms);
@@ -587,6 +612,7 @@
       });
       // Initialize date picker if empty, then update highlights
       setDatePickerToTodayIfEmpty();
+      updateTodayText();
       updateDateAndHighlights();
       scheduleMidnightRefresh();
       loadStickerType();
@@ -610,6 +636,7 @@
 </head>
 <body>
   <div class="date-display">
+    <div id="current-date" class="current-date"></div>
     <input type="date" id="datePicker" />
   </div>
   <div class="sticker">
