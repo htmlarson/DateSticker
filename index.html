@@ -72,11 +72,13 @@
       letter-spacing: 0.5px;
       text-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
+    /* Hide the native date input; we trigger it from the big text */
     .date-display input[type="date"] {
-      font-size: 14px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
     }
 
     .sticker {
@@ -469,15 +471,15 @@
           effDate = new Date(y, m, d);
         }
       }
+      // Update big date text to reflect the effective date
+      const cd = document.getElementById('current-date');
+      if (cd) {
+        cd.innerText = effDate.toLocaleDateString('en-US', {
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+      }
+      // Highlight based on the effective date
       highlightDate(effDate);
-    }
-
-    function updateTodayText() {
-      const el = document.getElementById('current-date');
-      if (!el) return;
-      el.innerText = new Date().toLocaleDateString('en-US', {
-        year: 'numeric', month: '2-digit', day: '2-digit'
-      });
     }
 
     function setDatePickerToTodayIfEmpty() {
@@ -498,7 +500,6 @@
       next.setHours(24,0,0,0);
       const ms = next - now;
       midnightTimer = setTimeout(()=>{
-        updateTodayText();
         updateDateAndHighlights();
         scheduleMidnightRefresh();
       }, ms);
@@ -612,7 +613,6 @@
       });
       // Initialize date picker if empty, then update highlights
       setDatePickerToTodayIfEmpty();
-      updateTodayText();
       updateDateAndHighlights();
       scheduleMidnightRefresh();
       loadStickerType();
@@ -621,6 +621,21 @@
       const dp = document.getElementById('datePicker');
       if (dp) {
         dp.addEventListener('change', updateDateAndHighlights);
+      }
+
+      // Make the big date open the native picker
+      const cd = document.getElementById('current-date');
+      if (cd && dp) {
+        cd.style.cursor = 'pointer';
+        cd.title = 'Click to change date';
+        cd.addEventListener('click', () => {
+          if (typeof dp.showPicker === 'function') {
+            dp.showPicker();
+          } else {
+            dp.focus();
+            dp.click();
+          }
+        });
       }
 
       const printBtn = document.getElementById('printBtn');
