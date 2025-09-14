@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calls Graph Mini‑App — v10 (Excel‑safe, debug bottom)</title>
+<style>
+  :root { --bg:#f6f7f9; --fg:#0f172a; --muted:#6b7280; --card:#ffffff; --line:#e5e7eb; --accent:#0ea5e9; --accent2:#22c55e; --accent3:#ef4444; }
+  html,body{height:100%}
+  body{margin:0;font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial; background:var(--bg); color:var(--fg)}
+  .wrap{max-width:1120px;margin:24px auto 56px;padding:0 16px}
+  h1{font-size:22px;margin:0 0 6px}
+  .sub{color:var(--muted);margin-bottom:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.03);padding:16px;flex:1 1 520px}
+  .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 0}
+  label{font-weight:600;font-size:12px;color:#374151}
+  input[type=file],select,button{height:36px;border-radius:10px;border:1px solid var(--line);background:white;padding:0 10px}
+  select{min-width:180px}
+  button{cursor:pointer;font-weight:600}
+  .spacer{flex:1 1 auto}
+  .chartbox{background:white;border:1px solid var(--line);border-radius:16px;padding:8px}
+  .grid{display:grid;gap:12px}
+  .two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .gridline{stroke:#e5e7eb}
+  .bar{fill:var(--accent)} .bar:hover{opacity:.85}
+  .lineA{fill:none;stroke:var(--accent2);stroke-width:2.5}
+  .lineB{fill:none;stroke:var(--accent3);stroke-width:2.5}
+  .dotA{fill:var(--accent2)} .dotB{fill:var(--accent3)}
+  .legend{display:flex;gap:12px;align-items:center;font-size:12px;color:#374151;margin:6px 0 0 6px}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .tip{color:var(--muted);font-size:12px}
+  #log{white-space:pre-wrap;background:#0b1020;color:#cbe3ff;border-radius:10px;padding:10px;max-height:220px;overflow:auto;border:1px solid #1f2a44}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CSV Calls Graph Mini‑App</h1>
+  <div class="sub">Excel‑safe (UTF‑16/UTF‑8). Quote‑aware delimiter detection. Prefers <b>Center</b> for labels. Rows equal to “Total/Totals” are ignored.</div>
+
+  <div class="row">
+    <div class="card">
+      <h2>By Store</h2>
+      <div class="controls">
+        <label>Store CSV:</label>
+        <input id="storeFile" type="file" accept=".csv,.txt" />
+        <span class="spacer"></span>
+        <span class="badge" id="storeTotal">—</span>
+      </div>
+      <div class="grid two">
+        <div class="grid">
+          <label>Label column</label>
+          <select id="storeLabel"></select>
+        </div>
+        <div class="grid">
+          <label>Value column</label>
+          <select id="storeValue"></select>
+        </div>
+      </div>
+      <div class="controls">
+        <label><input type="checkbox" id="percentMode"> Show % of total</label>
+        <label>Ranking</label>
+        <select id="rankMode">
+          <option value="desc">Highest first</option>
+          <option value="asc">Lowest first</option>
+          <option value="alpha">A → Z</option>
+        </select>
+        <span class="spacer"></span>
+        <button id="storeExport">Export PNG</button>
+      </div>
+      <div class="chartbox">
+        <svg id="storeChart" width="100%" height="420" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="tip">“Center” should be selected automatically when present.</div>
+    </div>
+
+    <div class="card">
+      <h2>By Half‑Hour</h2>
+      <div class="controls">
+        <label>Half‑Hour CSV:</label>
+        <input id="timeFile" type="file" accept=".csv,.txt" />
+        <span class="spacer"></span>
+        <button id="timeExport">Export PNG</button>
+      </div>
+      <div class="grid three">
+        <div class="grid">
+          <label>Time column</label>
+          <select id="timeLabel"></select>
+        </div>
+        <div class="grid">
+          <label>Answered column</label>
+          <select id="timeAnswered"></select>
+        </div>
+        <div class="grid">
+          <label>Rolled column</label>
+          <select id="timeRolled"></select>
+        </div>
+      </div>
+      <div class="chartbox">
+        <svg id="timeChart" width="100%" height="420" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="legend"><span class="swatch" style="background:var(--accent2)"></span>Answered <span class="swatch" style="background:var(--accent3)"></span>Rolled</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debug moved to bottom and collapsed by default -->
+  <details>
+    <summary>Debug</summary>
+    <div class="controls">
+      <button id="clearLog">Clear log</button>
+      <label><input type="checkbox" id="trace" checked> Verbose</label>
+    </div>
+    <div id="log">(Logs will appear here)</div>
+  </details>
+</div>
+
+<script>
+// ---------- Debug logger ----------
+const logEl=document.getElementById('log');
+const traceEl=document.getElementById('trace');
+function log(...args){ const msg=args.map(a=>typeof a==='string'?a:JSON.stringify(a)).join(' '); console.log('[miniapp]',...args); if(!traceEl||!traceEl.checked) return; logEl.textContent += '\n' + msg; logEl.scrollTop=logEl.scrollHeight; }
+function warn(...a){ console.warn('[miniapp]',...a); log('WARN',...a); }
+function error(...a){ console.error('[miniapp]',...a); log('ERROR',...a); }
+const clearBtn=document.getElementById('clearLog'); if(clearBtn){ clearBtn.onclick=()=>{ logEl.textContent='(Logs cleared)'; }; }
+
+// ---------- Decode (Excel safe) ----------
+async function readFileSmart(file){
+  log('readFileSmart: name=', file && file.name, 'size=', file && file.size);
+  const ab = await file.arrayBuffer();
+  const u8 = new Uint8Array(ab);
+  log('buffer bytes[0..5]=', Array.from(u8.slice(0,6)));
+  function dec(enc, off){ try { const s=new TextDecoder(enc).decode(off?u8.subarray(off):u8); log('decoded as', enc, 'len=', s.length); return s; } catch(e){ warn('decode failed', enc, e.message); return null; } }
+  if (u8.length>=2 && u8[0]===0xFE && u8[1]===0xFF) return dec('utf-16be', 2);
+  if (u8.length>=2 && u8[0]===0xFF && u8[1]===0xFE) return dec('utf-16le', 2);
+  if (u8.length>=3 && u8[0]===0xEF && u8[1]===0xBB && u8[2]===0xBF) return dec('utf-8', 3);
+  let even0=0, odd0=0; const N=Math.min(8192,u8.length);
+  for (let i=0;i<N;i++){ if(u8[i]===0){ if((i&1)===0) even0++; else odd0++; } }
+  log('zero parity even/odd=',even0,'/',odd0);
+  if (even0+odd0 > N/10) return dec(odd0>even0 ? 'utf-16le':'utf-16be', 0);
+  const utf8 = dec('utf-8',0); if(!utf8) return dec('utf-16le',0) || dec('utf-16be',0) || '';
+  if (utf8.includes('\u0000') || (utf8.match(/\uFFFD/g)||[]).length>8) return dec('utf-16le',0) || dec('utf-16be',0) || utf8;
+  return utf8;
+}
+
+// ---------- Quote‑aware delimiter detection (no RegExp) ----------
+function countCols(line, d){ let cols=1, q=false; for(let i=0;i<line.length;i++){ const c=line[i]; if(c==='"'){ if(q && line[i+1]==='"'){ i++; } else { q=!q; } } else if(c===d && !q){ cols++; } } return cols; }
+function detectDelimiter(text){ const lines=text.split(/\r?\n/).slice(0,10); const C=[',',';','\t','|']; let best=',', bestScore=-1, bestAvg=1; C.forEach(d=>{ const cols=lines.map(L=>countCols(L,d)); const avg=cols.reduce((a,b)=>a+b,0)/Math.max(1,cols.length); const varc=cols.reduce((a,b)=>a+(b-avg)*(b-avg),0)/Math.max(1,cols.length); const score=(avg>1?avg:0)-varc*0.01; if(score>bestScore){bestScore=score;best=d;bestAvg=avg;} }); if(bestAvg<=1){ const h=lines[0]||''; if(h.indexOf(',')>=0) best=','; else if(h.indexOf('\t')>=0) best='\t'; else if(h.indexOf(';')>=0) best=';'; else best='|'; } log('detectDelimiter ->', JSON.stringify(best)); return best; }
+
+// ---------- CSV parser (quoted fields) ----------
+function sanitizeHeader(h){ return String(h||'').replace(/[\u0000-\u001F\u200B-\u200D\uFEFF]/g,'').replace(/\s+/g,' ').trim(); }
+function parseCSV(text){ const delim=detectDelimiter(text); const rows=[]; let i=0,f='',row=[],q=false; const n=text.length; while(i<n){ const c=text[i++]; if(q){ if(c==='"'){ if(text[i]==='"'){ f+='"'; i++; } else { q=false; } } else { f+=c; } } else { if(c==='"'){ q=true; } else if(c===delim){ row.push(f); f=''; } else if(c==='\n'){ row.push(f); rows.push(row); row=[]; f=''; } else if(c==='\r'){ } else { f+=c; } } } if(f.length||row.length){ row.push(f); rows.push(row); } log('raw rows=', rows.length); if(!rows.length) return []; const headerRaw = rows[0]; const header = headerRaw.map(sanitizeHeader); const data = rows.slice(1).filter(r=>r.some(c=>String(c||'').trim()!=='')); const out = data.map(r=>{ const o={}; headerRaw.forEach((h,idx)=>{ const cleanH = sanitizeHeader(h); const raw=String(r[idx]??'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim(); const num=Number(raw.replace(/[,\s%]/g,'')); o[cleanH]=(raw!=='' && Number.isFinite(num))?num:raw; }); return o; }); log('parsed rows (non-empty)=', out.length, 'headers=', header); return out; }
+
+// ---------- Helpers ----------
+function toTimeMinutes(val){ if(typeof val!=='string') return 0; const s=val.trim(); const ampm=(s.match(/\b(?:am|pm)\b/i)||[])[0]; const parts=s.replace(/[^0-9:]/g,'').split(':'); let h=Number(parts[0]||0); const m=Number(parts[1]||0); if(ampm && /pm/i.test(ampm) && h<12) h+=12; if(ampm && /am/i.test(ampm) && h===12) h=0; return h*60+m; }
+function fmtPct(n){ return (n*100).toFixed(1)+'%'; }
+function sum(arr,f){ let t=0; for(const x of arr) t+=f(x)||0; return t; }
+function byId(id){ return document.getElementById(id); }
+function clearSVG(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+function makeSVG(tag,attrs){ const el=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const k in (attrs||{})) el.setAttribute(k,attrs[k]); return el; }
+function text(svg,x,y,str,attrs){ const t=makeSVG('text',Object.assign({x:x,y:y,'dominant-baseline':'hanging','font-size':'11','fill':'#111827'},attrs||{})); t.textContent=str; svg.appendChild(t); return t; }
+function gridY(svg,x0,x1,yValues){ for(const y of yValues){ const ln=makeSVG('line',{x1:x0,x2:x1,y1:y,y2:y}); ln.setAttribute('class','gridline'); svg.appendChild(ln); } }
+function exportSvgToPng(svgEl,fileName){ const svgData=new XMLSerializer().serializeToString(svgEl); const canvas=document.createElement('canvas'); const vb=svgEl.viewBox.baseVal || {width:svgEl.clientWidth,height:svgEl.clientHeight}; canvas.width=vb.width||960; canvas.height=vb.height||420; const ctx=canvas.getContext('2d'); const img=new Image(); img.onload=function(){ ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); const a=document.createElement('a'); a.download=fileName; a.href=canvas.toDataURL('image/png'); a.click(); }; img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgData); }
+function isTotalsRow(obj){ return Object.values(obj).some(v=>/^(total|totals)$/i.test(String(v||'').trim())); }
+
+// ---------- Global state ----------
+let storeRows=[], storeLabelCol='', storeValueCol='';
+let timeRows=[], timeLabelCol='', timeAnsCol='', timeRolCol='';
+
+// ---------- Stores ----------
+function preferCenter(cols){ const cleaned = cols.map(c=>({ raw:c, clean: sanitizeHeader(c).toLowerCase() })); let hit = cleaned.find(o=>o.clean==='center'); if (hit) return hit.raw; hit = cleaned.find(o=>/^center(\b|\s|#|id)/.test(o.clean)); if (hit) return hit.raw; for(const c of cols){ const vals=storeRows.slice(0,30).map(r=>r[sanitizeHeader(c)]||r[c]); if(vals.length && vals.every(v=>/^[0-9]{5,7}$/.test(String(v||'')))) return c; } return null; }
+function populateStoreSelectors(){ const labelSel=byId('storeLabel'); const valueSel=byId('storeValue'); const cols = Object.keys(storeRows[0]||{}); labelSel.innerHTML=''; valueSel.innerHTML=''; cols.forEach(c=>{ const disp=sanitizeHeader(c)||c; const o1=document.createElement('option'); o1.value=c; o1.textContent=disp; labelSel.appendChild(o1); const o2=document.createElement('option'); o2.value=c; o2.textContent=disp; valueSel.appendChild(o2); }); const centerPref = preferCenter(cols); const guessLabel = centerPref || (cols.find(c=>/center|store|mco|location|district|name/i.test(sanitizeHeader(c))) || cols[0] || ''); const guessValue = cols.find(c=>/answered|calls|handled|total calls|call count/i.test(sanitizeHeader(c))) || cols[1] || cols[0] || ''; storeLabelCol = sanitizeHeader(guessLabel); storeValueCol = sanitizeHeader(guessValue); labelSel.value = guessLabel; valueSel.value = guessValue; log('populateStoreSelectors: cols=', cols, 'label=', storeLabelCol, 'value=', storeValueCol); }
+function prepStoreData(){ if(!storeRows.length||!storeLabelCol||!storeValueCol) { log('prepStoreData: missing selection', {len:storeRows.length, storeLabelCol, storeValueCol}); return null; } const filtered=storeRows.filter(r=>!isTotalsRow(r)); const total=sum(filtered,r=>Number(r[storeValueCol])); const rows=filtered.map(r=>({label:String(r[storeLabelCol]??''), value:Number(r[storeValueCol])||0})); log('prepStoreData: filtered len=', filtered.length, 'total=', total); return {rows,total}; }
+function drawStores(){ const svg=byId('storeChart'); clearSVG(svg); const percentMode=byId('percentMode').checked; const rankMode=byId('rankMode').value; const prep=prepStoreData(); if(!prep){ byId('storeTotal').textContent='—'; return; } let rows=prep.rows.slice(); if(rankMode==='desc') rows.sort((a,b)=>b.value-a.value); else if(rankMode==='asc') rows.sort((a,b)=>a.value-b.value); else rows.sort((a,b)=>String(a.label).localeCompare(String(b.label))); rows=rows.map((r,i)=>Object.assign({},r,{rank:i+1,percent:prep.total>0?r.value/prep.total:0})); const values=rows.map(r=> percentMode? r.percent : r.value); const W=960,H=420,m={t:20,r:20,b:90,l:60}; const innerW=W-m.l-m.r, innerH=H-m.t-m.b; const g=makeSVG('g',{transform:'translate('+m.l+','+m.t+')'}); svg.appendChild(g); const maxV=Math.max(1,...values); const stepX=innerW/Math.max(1,values.length); const y=v=> innerH-(v/maxV)*innerH; const gridCount=5; const gridYs=Array.from({length:gridCount+1},(_,i)=> (innerH/gridCount)*i); gridY(g,0,innerW,gridYs); g.appendChild(makeSVG('line',{x1:0,y1:innerH,x2:innerW,y2:innerH,stroke:'#9ca3af'})); g.appendChild(makeSVG('line',{x1:0,y1:0,x2:0,y2:innerH,stroke:'#9ca3af'})); for(let i=0;i<=gridCount;i++){ const val=maxV*(i/gridCount); const yy=y(val); text(g,-8,yy-6, percentMode? (Math.round(val*100)+'%') : String(Math.round(val)), {'text-anchor':'end', fill:'#6b7280'}); } const barW=Math.max(8, stepX*0.7); rows.forEach((r,idx)=>{ const v=values[idx]; const h=innerH-y(v); const x=idx*stepX+(stepX-barW)/2; const rect=makeSVG('rect',{x:x, y:y(v), width:barW, height:h}); rect.setAttribute('class','bar'); rect.addEventListener('mousemove',e=>{ showTip('<b>'+r.label+'</b><br>'+(percentMode?fmtPct(r.percent):r.value.toLocaleString())+'<br>Rank #'+r.rank, e.clientX, e.clientY); }); rect.addEventListener('mouseleave', hideTip); g.appendChild(rect); const tx=makeSVG('text',{x: idx*stepX+stepX/2, y: innerH+8, 'text-anchor':'end', transform:'rotate(-30 '+(idx*stepX+stepX/2)+','+(innerH+8)+')', 'font-size':'11', fill:'#111827'}); tx.textContent=r.label; g.appendChild(tx); }); byId('storeTotal').textContent='Total: '+prep.total.toLocaleString(); }
+
+// ---------- Half‑hour ----------
+function detectStringCols(rows){ if(!rows.length) return []; const k=Object.keys(rows[0]); return k.filter(col=>rows.some(r=>typeof r[col]==='string' && r[col]!=='')); }
+function detectNumericCols(rows){ if(!rows.length) return []; const k=Object.keys(rows[0]); return k.filter(col=>rows.every(r=>r[col]==null || typeof r[col]==='number')); }
+function populateTimeSelectors(){ const tSel=byId('timeLabel'), aSel=byId('timeAnswered'), rSel=byId('timeRolled'); const sCols=detectStringCols(timeRows), nCols=detectNumericCols(timeRows); tSel.innerHTML=''; aSel.innerHTML=''; rSel.innerHTML=''; sCols.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=sanitizeHeader(c); tSel.appendChild(o); }); nCols.forEach(c=>{ const o1=document.createElement('option'); o1.value=c; o1.textContent=sanitizeHeader(c); aSel.appendChild(o1); const o2=document.createElement('option'); o2.value=c; o2.textContent=sanitizeHeader(c); rSel.appendChild(o2); }); const gT=sCols.find(c=>/time|half.?hour|slot/i.test(sanitizeHeader(c)))||sCols[0]||''; const gA=nCols.find(c=>/answered|answ|handled/i.test(sanitizeHeader(c)))||nCols[0]||''; const gR=nCols.find(c=>/rolled|roll.?over/i.test(sanitizeHeader(c)))||''; timeLabelCol=gT; timeAnsCol=gA; timeRolCol=gR; tSel.value=gT; aSel.value=gA; rSel.value=gR; log('populateTimeSelectors:', {gT,gA,gR}); }
+function prepTimeData(){ if(!timeRows.length||!timeLabelCol||!timeAnsCol) { log('prepTimeData: missing selection', {len:timeRows.length,timeLabelCol,timeAnsCol}); return []; } const map=new Map(); for(const r of timeRows){ if(isTotalsRow(r)) continue; const label=r[timeLabelCol]; const key=toTimeMinutes(label); const ans=Number(r[timeAnsCol])||0; const rol=timeRolCol? (Number(r[timeRolCol])||0) : 0; const cur=map.get(key)||{t:label, answered:0, rolled:0}; cur.answered+=ans; cur.rolled+=rol; cur.t=label; map.set(key,cur);} const out=Array.from(map.entries()).sort((a,b)=>a[0]-b[0]).map(([k,v])=>v); log('prepTimeData: points=', out.length); return out; }
+function drawTime(){ const svg=byId('timeChart'); clearSVG(svg); const data=prepTimeData(); if(!data.length) return; const W=960,H=420,m={t:20,r:20,b:90,l:60}; const innerW=W-m.l-m.r, innerH=H-m.t-m.b; const g=makeSVG('g',{transform:'translate('+m.l+','+m.t+')'}); svg.appendChild(g); const maxV=Math.max(1,...data.map(d=>Math.max(d.answered,d.rolled))); const xs=data.map(d=>toTimeMinutes(d.t)); const minX=Math.min(...xs), maxX=Math.max(...xs); const x=v=> ((toTimeMinutes(v)-minX)/Math.max(1,(maxX-minX)))*innerW; const y=v=> innerH-(v/maxV)*innerH; const gridCount=5; const gridYs=Array.from({length:gridCount+1},(_,i)=> (innerH/gridCount)*i); gridY(g,0,innerW,gridYs); g.appendChild(makeSVG('line',{x1:0,y1:innerH,x2:innerW,y2:innerH,stroke:'#9ca3af'})); g.appendChild(makeSVG('line',{x1:0,y1:0,x2:0,y2:innerH,stroke:'#9ca3af'})); for(let i=0;i<=gridCount;i++){ const val=maxV*(i/gridCount); const yy=y(val); text(g,-8,yy-6, String(Math.round(val)), {'text-anchor':'end', fill:'#6b7280'}); } function pathFor(key){ let d=''; data.forEach((p,i)=>{ const X=x(p.t), Y=y(p[key]); d+=(i?' L ':'M ')+X+' '+Y; }); return d; } g.appendChild(makeSVG('path',{d:pathFor('answered'), class:'lineA'})); g.appendChild(makeSVG('path',{d:pathFor('rolled'), class:'lineB'})); const labelEvery=Math.max(1,Math.floor(data.length/24)); data.forEach((p,i)=>{ const X=x(p.t); const Ya=y(p.answered), Yb=y(p.rolled); const c1=makeSVG('circle',{cx:X,cy:Ya,r:3.5,class:'dotA'}); c1.addEventListener('mousemove',e=>{ showTip('<b>'+p.t+'</b><br>Answered: '+p.answered.toLocaleString(), e.clientX, e.clientY);}); c1.addEventListener('mouseleave', hideTip); g.appendChild(c1); const c2=makeSVG('circle',{cx:X,cy:Yb,r:3.5,class:'dotB'}); c2.addEventListener('mousemove',e=>{ showTip('<b>'+p.t+'</b><br>Rolled: '+p.rolled.toLocaleString(), e.clientX, e.clientY);}); c2.addEventListener('mouseleave', hideTip); g.appendChild(c2); if(i%labelEvery===0){ const tx=makeSVG('text',{x:X,y:innerH+8,'text-anchor':'end',transform:'rotate(-30 '+X+','+(innerH+8)+')','font-size':'11',fill:'#111827'}); tx.textContent=p.t; g.appendChild(tx);} }); }
+
+// ---------- Wire‑up ----------
+function attach(){ byId('storeFile').addEventListener('change', async e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const txt=await readFileSmart(f); log('store file decoded length=', txt.length); storeRows=parseCSV(txt); log('storeRows parsed len=', storeRows.length); if(!storeRows.length){ warn('No rows parsed from store CSV'); return; } storeRows = storeRows.map(r=>{ const o={}; Object.keys(r).forEach(k=>{ o[sanitizeHeader(k)]=r[k]; }); return o; }); populateStoreSelectors(); drawStores(); }); byId('timeFile').addEventListener('change', async e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const txt=await readFileSmart(f); log('time file decoded length=', txt.length); timeRows=parseCSV(txt); log('timeRows parsed len=', timeRows.length); if(!timeRows.length){ warn('No rows parsed from time CSV'); return; } timeRows = timeRows.map(r=>{ const o={}; Object.keys(r).forEach(k=>{ o[sanitizeHeader(k)]=r[k]; }); return o; }); populateTimeSelectors(); drawTime(); }); byId('storeLabel').addEventListener('change', e=>{ storeLabelCol=sanitizeHeader(e.target.value); log('storeLabel ->', storeLabelCol); drawStores(); }); byId('storeValue').addEventListener('change', e=>{ storeValueCol=sanitizeHeader(e.target.value); log('storeValue ->', storeValueCol); drawStores(); }); byId('percentMode').addEventListener('change', ()=>{ log('percentMode ->', byId('percentMode').checked); drawStores(); }); byId('rankMode').addEventListener('change', ()=>{ log('rankMode ->', byId('rankMode').value); drawStores(); }); byId('storeExport').addEventListener('click', ()=> exportSvgToPng(byId('storeChart'),'stores-chart.png')); byId('timeLabel').addEventListener('change', e=>{ timeLabelCol=sanitizeHeader(e.target.value); log('timeLabel ->', timeLabelCol); drawTime(); }); byId('timeAnswered').addEventListener('change', e=>{ timeAnsCol=sanitizeHeader(e.target.value); log('timeAnswered ->', timeAnsCol); drawTime(); }); byId('timeRolled').addEventListener('change', e=>{ timeRolCol=sanitizeHeader(e.target.value); log('timeRolled ->', timeRolCol); drawTime(); }); byId('timeExport').addEventListener('click', ()=> exportSvgToPng(byId('timeChart'),'half-hour-chart.png')); }
+attach();
+
+// Tooltip element
+const tip=document.createElement('div'); tip.style.position='fixed'; tip.style.pointerEvents='none'; tip.style.background='#111827'; tip.style.color='#fff'; tip.style.padding='6px 8px'; tip.style.borderRadius='8px'; tip.style.fontSize='12px'; tip.style.transform='translate(-50%,calc(-100% - 10px))'; tip.style.whiteSpace='nowrap'; tip.style.zIndex='999'; tip.style.display='none'; document.body.appendChild(tip);
+function showTip(html,x,y){ tip.style.display='block'; tip.style.left=x+'px'; tip.style.top=y+'px'; tip.innerHTML=html; }
+function hideTip(){ tip.style.display='none'; }
+</script>
+</body>
+</html>
