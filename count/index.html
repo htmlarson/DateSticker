@@ -82,34 +82,63 @@
       tbody.appendChild(row);
     });
 
+    function focusAndSelect(el){ if(!el) return; el.focus(); el.select?.(); }
+
     // Set tab order up and down each column, select text on focus
     window.addEventListener('DOMContentLoaded', () => {
       [1, 2, 3].forEach(drawer => {
         coins.forEach((_, i) => {
-          const input = document.getElementById(`d${drawer}-${i}`);
-          const next = document.getElementById(`d${drawer}-${i + 1}`);
-          const prev = document.getElementById(`d${drawer}-${i - 1}`);
+          const cur = document.getElementById(`d${drawer}-${i}`);
+          const nextDown = document.getElementById(`d${drawer}-${i + 1}`);
+          const nextUp   = document.getElementById(`d${drawer}-${i - 1}`);
 
-          // Select all text when focused
-          input.addEventListener('focus', e => {
-            e.target.select();
+          // Select all text when focused (also on click)
+          cur.addEventListener('focus', e => e.target.select());
+          cur.addEventListener('mouseup', e => { // prevent mouseup from clearing selection
+            e.preventDefault();
           });
 
-          // Custom tab navigation up/down within same drawer
-          input.addEventListener('keydown', e => {
-            if (e.key === 'Tab') {
-              e.preventDefault();
-              if (!e.shiftKey && next) {
-                next.focus();
-                next.select();
-              } else if (e.shiftKey && prev) {
-                prev.focus();
-                prev.select();
+          cur.addEventListener('keydown', e => {
+            if (e.key !== 'Tab') return; // not our concern
+
+            // SHIFT+TAB (move up in same drawer, or wrap to previous drawer's bottom)
+            if (e.shiftKey) {
+              if (nextUp) {
+                e.preventDefault();
+                focusAndSelect(nextUp);
+              } else {
+                // At top of this drawer; wrap to previous drawer's bottom if available
+                const prevDrawer = drawer - 1;
+                if (prevDrawer >= 1) {
+                  e.preventDefault();
+                  const wrap = document.getElementById(`d${prevDrawer}-${coins.length - 1}`);
+                  focusAndSelect(wrap);
+                } // else let browser default (move to header / outside table)
+              }
+              return;
+            }
+
+            // TAB (move down in same drawer, or wrap to next drawer's top)
+            if (!e.shiftKey) {
+              if (nextDown) {
+                e.preventDefault();
+                focusAndSelect(nextDown);
+              } else {
+                const nextDrawer = drawer + 1;
+                if (nextDrawer <= 3) {
+                  e.preventDefault();
+                  const wrap = document.getElementById(`d${nextDrawer}-0`);
+                  focusAndSelect(wrap);
+                } // else at bottom of last drawer: allow natural tab to next focusable
               }
             }
           });
         });
       });
+
+      // Put initial focus on Drawer 1 / Quarters for speed entry
+      const first = document.getElementById('d1-0');
+      if (first) focusAndSelect(first);
     });
 
     function calc() {
