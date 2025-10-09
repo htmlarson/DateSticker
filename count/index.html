@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Morning Change Count</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #374151;
+      padding: 8px;
+      text-align: right;
+    }
+    th { background: #1f2937; }
+    td:first-child, th:first-child { text-align: left; }
+    input[type="number"] {
+      width: 100px;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #374151;
+      background: #0f172a;
+      color: #f9fafb;
+      text-align: right;
+    }
+    tfoot td {
+      font-weight: bold;
+      background: #1f2937;
+    }
+  </style>
+</head>
+<body>
+  <h1>Morning Change Count</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Coin</th>
+        <th>Drawer 1</th>
+        <th>Drawer 2</th>
+        <th>Drawer 3</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td id="total1">$0.00</td>
+        <td id="total2">$0.00</td>
+        <td id="total3">$0.00</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <script>
+    // Start with quarters and go down to pennies for tab order
+    const coins = [
+      { name: 'Quarters', value: 0.25 },
+      { name: 'Dimes', value: 0.10 },
+      { name: 'Nickels', value: 0.05 },
+      { name: 'Pennies', value: 0.01 }
+    ];
+
+    const tbody = document.getElementById('rows');
+    coins.forEach((c, i) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${c.name}</td>
+        <td><input type="number" min="0" id="d1-${i}" oninput="calc()"></td>
+        <td><input type="number" min="0" id="d2-${i}" oninput="calc()"></td>
+        <td><input type="number" min="0" id="d3-${i}" oninput="calc()"></td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    // Set tab order up and down each column, select text on focus
+    window.addEventListener('DOMContentLoaded', () => {
+      [1, 2, 3].forEach(drawer => {
+        coins.forEach((_, i) => {
+          const input = document.getElementById(`d${drawer}-${i}`);
+          const next = document.getElementById(`d${drawer}-${i + 1}`);
+          const prev = document.getElementById(`d${drawer}-${i - 1}`);
+
+          // Select all text when focused
+          input.addEventListener('focus', e => {
+            e.target.select();
+          });
+
+          // Custom tab navigation up/down within same drawer
+          input.addEventListener('keydown', e => {
+            if (e.key === 'Tab') {
+              e.preventDefault();
+              if (!e.shiftKey && next) {
+                next.focus();
+                next.select();
+              } else if (e.shiftKey && prev) {
+                prev.focus();
+                prev.select();
+              }
+            }
+          });
+        });
+      });
+    });
+
+    function calc() {
+      let totals = [0, 0, 0];
+      coins.forEach((c, i) => {
+        [1, 2, 3].forEach(j => {
+          const count = parseFloat(document.getElementById(`d${j}-${i}`).value) || 0;
+          totals[j - 1] += count * c.value;
+        });
+      });
+      document.getElementById('total1').textContent = totals[0].toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      document.getElementById('total2').textContent = totals[1].toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      document.getElementById('total3').textContent = totals[2].toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    }
+  </script>
+</body>
+</html>
