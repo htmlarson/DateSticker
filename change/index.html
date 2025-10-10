@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Change Count</title>
+  <style>
+    :root { --bg:#111827; --ink:#e5e7eb; --line:#374151; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--ink);padding:20px}
+    h1{margin:0 0 12px;text-align:center}
+    .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    @media (max-width:900px){.wrap{grid-template-columns:1fr}}
+
+    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0}
+    legend{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-weight:600}
+
+    .col{padding:12px}
+    .row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+    .row:last-child{border-bottom:0}
+    label{color:#cbd5e1}
+    input[type=number]{width:110px;justify-self:end;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--ink);text-align:right}
+
+    .totals{margin-top:16px;display:grid;gap:12px}
+    .totals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .box{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:#0f172a}
+    .label{display:block;color:#9ca3af;font-size:0.85rem;margin-bottom:4px}
+    .value{font-variant-numeric:tabular-nums;font-weight:700}
+  </style>
+</head>
+<body>
+  <h1>Morning Change Count</h1>
+  <div class="wrap">
+    <fieldset class="col" aria-labelledby="d3-legend">
+      <legend id="d3-legend">Drawer 3</legend>
+      <div class="row"><label for="d3-q">Quarters</label><input id="d3-q" name="d3-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d3-d">Dimes</label><input id="d3-d" name="d3-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d3-n">Nickels</label><input id="d3-n" name="d3-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d3-p">Pennies</label><input id="d3-p" name="d3-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    </fieldset>
+
+    <fieldset class="col" aria-labelledby="d2-legend">
+      <legend id="d2-legend">Drawer 2</legend>
+      <div class="row"><label for="d2-q">Quarters</label><input id="d2-q" name="d2-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d2-d">Dimes</label><input id="d2-d" name="d2-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d2-n">Nickels</label><input id="d2-n" name="d2-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d2-p">Pennies</label><input id="d2-p" name="d2-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    </fieldset>
+
+    <fieldset class="col" aria-labelledby="d1-legend">
+      <legend id="d1-legend">Drawer 1</legend>
+      <div class="row"><label for="d1-q">Quarters</label><input id="d1-q" name="d1-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d1-d">Dimes</label><input id="d1-d" name="d1-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    </fieldset>
+  </div>
+
+  <section class="totals" aria-live="polite">
+    <div class="totals-grid">
+      <div class="box"><span class="label">Drawer 3</span><span class="value" id="t3">$0.00</span></div>
+      <div class="box"><span class="label">Drawer 2</span><span class="value" id="t2">$0.00</span></div>
+      <div class="box"><span class="label">Drawer 1</span><span class="value" id="t1">$0.00</span></div>
+    </div>
+  </section>
+
+  <script>
+    (function(){
+      const $ = (sel, el=document) => el.querySelector(sel);
+      const coinMap = [ ['q',0.25], ['d',0.10], ['n',0.05], ['p',0.01] ];
+      const idsByDrawer = [3,2,1].map(d => coinMap.map(([k]) => `d${d}-${k}`));
+      const fmt = n => n.toLocaleString('en-US',{style:'currency',currency:'USD'});
+
+      function calc(){
+        const totals = [0,0,0];
+        idsByDrawer.forEach((arr, idx)=>{
+          arr.forEach((id, i)=>{
+            const el = document.getElementById(id);
+            const val = parseFloat(el.value)||0;
+            totals[idx] += val * coinMap[i][1];
+          });
+        });
+        $('#t3').textContent = fmt(totals[0]);
+        $('#t2').textContent = fmt(totals[1]);
+        $('#t1').textContent = fmt(totals[2]);
+      }
+
+      function selectOnFocus(e){ e.target.select(); }
+      function keepSelection(e){ e.preventDefault(); }
+
+      idsByDrawer.flat().forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', calc);
+        el.addEventListener('focus', selectOnFocus);
+        el.addEventListener('mouseup', keepSelection);
+      });
+
+      calc();
+    })();
+  </script>
+</body>
+</html>
