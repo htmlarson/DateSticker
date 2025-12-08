@@ -3,6 +3,7 @@
 // Set this to the first Monday of your pay cycle.
 // For "every other Monday starting today", set this once when you deploy.
 const START_DATE_STRING = '2025-12-08'; // YYYY-MM-DD
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function toMidnightUtc(date) {
   return new Date(Date.UTC(
@@ -25,8 +26,7 @@ function formatDateYmd(date) {
 }
 
 function daysBetween(a, b) {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return Math.floor((b.getTime() - a.getTime()) / msPerDay);
+  return Math.floor((b.getTime() - a.getTime()) / MS_PER_DAY);
 }
 
 export async function onRequest(context) {
@@ -37,32 +37,48 @@ export async function onRequest(context) {
   const diffDaysFromStart = daysBetween(startDate, today);
   const isOnOrAfterStart = diffDaysFromStart >= 0;
 
-  const isEveryOtherMonday =
-    diffDaysFromStart % 14 === 0 &&
-    today.getUTCDay() === 1; // Monday = 1
+  let dateOfPayday;   // nearest payday, may be today
+  let paydayAfter;    // the payday after that
+  let isPayDay = false;
 
-  const isPayDay = isOnOrAfterStart && isEveryOtherMonday;
-
-  let nextPayDate;
   if (!isOnOrAfterStart) {
-    // Before the schedule starts: first pay date is the start date
-    nextPayDate = startDate;
+    // Before schedule starts
+    dateOfPayday = startDate;
+    paydayAfter = new Date(startDate.getTime() + 14 * MS_PER_DAY);
   } else {
-    const remainder = diffDaysFromStart % 14;
-
-    // If remainder === 0, today is on the cycle.
-    // We always want the *next* one, so jump 14 days ahead.
-    const daysUntilNext = remainder === 0 ? 14 : 14 - remainder;
-
-    nextPayDate = new Date(
-      today.getTime() + daysUntilNext * 24 * 60 * 60 * 1000
+    // How many full 14-day cycles have passed since start
+    const cyclesFromStart = Math.floor(diffDaysFromStart / 14);
+    const currentCycleDate = new Date(
+      startDate.getTime() + cyclesFromStart * 14 * MS_PER_DAY
     );
+
+    // Today is exactly on a pay cycle if diffDaysFromStart is a multiple of 14
+    const isCycleDay = diffDaysFromStart % 14 === 0;
+
+    // Guarded by weekday in case you ever adjust START_DATE_STRING incorrectly
+    isPayDay = isCycleDay && today.getUTCDay() === 1; // Monday
+
+    if (isPayDay) {
+      // Inclusive payday (may be today)
+      dateOfPayday = today;
+      // "Payday after" is the one 14 days later
+      paydayAfter = new Date(today.getTime() + 14 * MS_PER_DAY);
+    } else {
+      // Next upcoming payday (strictly after today)
+      dateOfPayday = new Date(
+        currentCycleDate.getTime() + 14 * MS_PER_DAY
+      );
+      paydayAfter = new Date(
+        dateOfPayday.getTime() + 14 * MS_PER_DAY
+      );
+    }
   }
 
   const payload = [
     {
       today: formatDateYmd(today),
-      nextPayDate: formatDateYmd(nextPayDate),
+      dateOfPayday: formatDateYmd(dateOfPayday), // may equal today
+      paydayAfter: formatDateYmd(paydayAfter),   // always after dateOfPayday
       isPayDay
     }
   ];
@@ -70,6 +86,14 @@ export async function onRequest(context) {
   return new Response(JSON.stringify(payload), {
     status: 200,
     headers: {
+      // Browser cache control
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+
+      // Hint to Cloudflare / intermediary caches
+      'CDN-Cache-Control': 'no-store',
+
       'content-type': 'application/json; charset=utf-8'
     }
   });
