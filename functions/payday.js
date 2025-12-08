@@ -29,7 +29,6 @@ function daysBetween(a, b) {
   return Math.floor((b.getTime() - a.getTime()) / msPerDay);
 }
 
-// Cloudflare Pages Function entrypoint
 export async function onRequest(context) {
   const now = new Date();
   const today = toMidnightUtc(now);
@@ -46,10 +45,15 @@ export async function onRequest(context) {
 
   let nextPayDate;
   if (!isOnOrAfterStart) {
+    // Before the schedule starts: first pay date is the start date
     nextPayDate = startDate;
   } else {
     const remainder = diffDaysFromStart % 14;
-    const daysUntilNext = remainder === 0 ? 0 : 14 - remainder;
+
+    // If remainder === 0, today is on the cycle.
+    // We always want the *next* one, so jump 14 days ahead.
+    const daysUntilNext = remainder === 0 ? 14 : 14 - remainder;
+
     nextPayDate = new Date(
       today.getTime() + daysUntilNext * 24 * 60 * 60 * 1000
     );
