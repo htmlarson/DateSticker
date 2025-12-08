@@ -2,7 +2,7 @@
 
 // Set this to the first Monday of your pay cycle.
 // For "every other Monday starting today", set this once when you deploy.
-const START_DATE_STRING = '2025-12-07'; // YYYY-MM-DD
+const START_DATE_STRING = '2025-12-08'; // YYYY-MM-DD
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function toMidnightUtc(date) {
