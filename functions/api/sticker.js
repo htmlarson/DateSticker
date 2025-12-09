@@ -19,8 +19,9 @@ function getFirstSundayOfMonth(year, month) {
   return d;
 }
 
-function parseDateParam(searchParams) {
-  const dateParam = searchParams.get('date');
+function parseDateParam(url) {
+  const params = new URL(url).searchParams;
+  const dateParam = params.get('date');
   if (!dateParam) return null;
 
   const [y, m, d] = dateParam.split('-').map(Number);
@@ -28,16 +29,6 @@ function parseDateParam(searchParams) {
 
   const parsed = new Date(y, m - 1, d);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function parseBooleanParam(searchParams, key) {
-  const value = searchParams.get(key);
-  if (value === null) return false;
-
-  const normalized = value.trim().toLowerCase();
-
-  if (normalized === '') return true;
-  return normalized === 'true' || normalized === '1' || normalized === 'yes';
 }
 
 function formatYmd(date) {
@@ -86,20 +77,13 @@ function computeStickerInfo(effectiveDate) {
 }
 
 export async function onRequest(context) {
-  const searchParams = new URL(context.request.url).searchParams;
-
-  const effectiveDate = parseDateParam(searchParams) || new Date();
+  const effectiveDate = parseDateParam(context.request.url) || new Date();
   const payload = computeStickerInfo(effectiveDate);
 
-  const useFullMonthName = parseBooleanParam(searchParams, 'useFullMonthName');
-  const quiet = parseBooleanParam(searchParams, 'quiet');
-
-  const answerMonth = useFullMonthName ? payload.month : payload.monthLetter;
-
-  const responseBody = { answer: [answerMonth, payload.week] };
-  if (!quiet) {
-    responseBody.factors = payload;
-  }
+  const responseBody = {
+    answer: [payload.monthLetter, payload.week],
+    factors: payload
+  };
 
   return new Response(JSON.stringify(responseBody), {
     status: 200,
