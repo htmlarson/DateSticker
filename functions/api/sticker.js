@@ -77,13 +77,22 @@ function computeStickerInfo(effectiveDate) {
 }
 
 export async function onRequest(context) {
+  const url = new URL(context.request.url);
+  const useFullMonthName = url.searchParams.get('useFullMonthName') === 'true';
+  const quiet = url.searchParams.get('quiet') === 'true';
+
   const effectiveDate = parseDateParam(context.request.url) || new Date();
   const payload = computeStickerInfo(effectiveDate);
 
+  const monthAnswer = useFullMonthName ? payload.month : payload.monthLetter;
+
   const responseBody = {
-    answer: [payload.monthLetter, payload.week],
-    factors: payload
+    answer: [monthAnswer, payload.week]
   };
+
+  if (!quiet) {
+    responseBody.factors = payload;
+  }
 
   return new Response(JSON.stringify(responseBody), {
     status: 200,
