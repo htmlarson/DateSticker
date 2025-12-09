@@ -1,4 +1,4 @@
-// functions/stickerapi.js
+// functions/API/sticker.js
 // Returns sticker punch guidance as JSON based on the "last Sunday" logic
 // used by the main sticker UI.
 
