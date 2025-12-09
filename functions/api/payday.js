@@ -1,4 +1,4 @@
-// functions/payday.js
+// functions/api/payday.js
 
 // Set this to the first Monday of your pay cycle.
 // For "every other Monday starting today", set this once when you deploy.
