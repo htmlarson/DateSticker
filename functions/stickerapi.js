@@ -80,7 +80,12 @@ export async function onRequest(context) {
   const effectiveDate = parseDateParam(context.request.url) || new Date();
   const payload = computeStickerInfo(effectiveDate);
 
-  return new Response(JSON.stringify(payload), {
+  const responseBody = {
+    answer: [payload.monthLetter, payload.week],
+    factors: payload
+  };
+
+  return new Response(JSON.stringify(responseBody), {
     status: 200,
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
