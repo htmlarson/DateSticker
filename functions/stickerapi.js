@@ -63,9 +63,12 @@ function computeStickerInfo(effectiveDate) {
     'December'
   ];
 
+  const monthLetters = 'JFMAMJJASOND';
+
   return {
     month: monthNames[monthIndex],
     monthNumber: monthIndex + 1,
+    monthLetter: monthLetters[monthIndex],
     year,
     week,
     lastSunday: formatYmd(lastSunday),
