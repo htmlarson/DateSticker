@@ -25,6 +25,8 @@
 
     .totals{margin-top:16px;display:grid;gap:12px}
     .totals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .totals-grid--main{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+    .totals-grid--wide{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
     .box{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:#0f172a}
     .label{display:block;color:#9ca3af;font-size:0.85rem;margin-bottom:4px}
     .value{font-variant-numeric:tabular-nums;font-weight:700}
@@ -77,13 +79,36 @@
       <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-n-r" name="d1-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
       <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-p-r" name="d1-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
     </fieldset>
+
+    <!-- Safe -->
+    <fieldset class="col" aria-labelledby="safe-legend">
+      <legend id="safe-legend">Safe</legend>
+      <div class="row">
+        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+      </div>
+      <div class="row"><label for="safe-q">Quarters</label><input id="safe-q" name="safe-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-q-r" name="safe-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="safe-d">Dimes</label><input id="safe-d" name="safe-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-d-r" name="safe-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="safe-n">Nickels</label><input id="safe-n" name="safe-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-n-r" name="safe-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="safe-p">Pennies</label><input id="safe-p" name="safe-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-p-r" name="safe-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      <div class="row"><label for="safe-clip1">Clips of $1 (=$20)</label><input id="safe-clip1" name="safe-clip1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      <div class="row"><label for="safe-1">Loose $1</label><input id="safe-1" name="safe-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      <div class="row"><label for="safe-5">Loose $5</label><input id="safe-5" name="safe-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      <div class="row"><label for="safe-10">Loose $10</label><input id="safe-10" name="safe-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      <div class="row"><label for="safe-20">Loose $20</label><input id="safe-20" name="safe-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      <div class="row"><label for="safe-50">Loose $50</label><input id="safe-50" name="safe-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      <div class="row"><label for="safe-100">Loose $100</label><input id="safe-100" name="safe-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+    </fieldset>
   </div>
 
   <section class="totals" aria-live="polite">
-    <div class="totals-grid">
+    <div class="totals-grid totals-grid--main">
       <div class="box"><span class="label">Drawer 3</span><span class="value" id="t3">$0.00</span></div>
       <div class="box"><span class="label">Drawer 2</span><span class="value" id="t2">$0.00</span></div>
       <div class="box"><span class="label">Drawer 1</span><span class="value" id="t1">$0.00</span></div>
+      <div class="box"><span class="label">Safe subtotal</span><span class="value" id="ts">$0.00</span></div>
+    </div>
+    <div class="totals-grid totals-grid--wide">
+      <div class="box"><span class="label">All drawers + safe</span><span class="value" id="tall">$0.00</span></div>
     </div>
   </section>
 
@@ -95,6 +120,9 @@
       const keys = ['q','d','n','p'];
       const valuesC = [25,10,5,1];
       const rollC   = [1000,500,200,50]; // quarters,dimes,nickels,pennies
+      const safeCoinKeys = keys;
+      const safeBillKeys = ['clip1','1','5','10','20','50','100'];
+      const safeBillValuesC = { clip1: 2000, '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
       const drawers = [3,2,1];
 
       const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -102,6 +130,8 @@
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
       const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
+      const safeCoinIds = safeCoinKeys.map(k => [`safe-${k}`, `safe-${k}-r`]);
+      const safeBillIds = safeBillKeys.map(k => [`safe-${k}`, null]);
 
       const fmt = cents => (cents/100).toLocaleString('en-US', {style:'currency',currency:'USD'});
 
@@ -119,6 +149,19 @@
         return counts;
       }
 
+      function readSafeCounts(){
+        const coins = {};
+        safeCoinKeys.forEach((k)=>{
+          coins[k] = readInt(document.getElementById(`safe-${k}`));
+          coins[`${k}R`] = readInt(document.getElementById(`safe-${k}-r`));
+        });
+        const bills = {};
+        safeBillKeys.forEach((k)=>{
+          bills[k] = readInt(document.getElementById(`safe-${k}`));
+        });
+        return { coins, bills };
+      }
+
       function applyDrawerCounts(drawerNum, counts){
         if (!counts) return;
         keys.forEach((k)=>{
@@ -133,6 +176,26 @@
         });
       }
 
+      function applySafeCounts(counts){
+        if (!counts) return;
+        safeCoinKeys.forEach((k)=>{
+          const loose = counts.coins?.[k];
+          const rolls = counts.coins?.[`${k}R`];
+          if (typeof loose === 'number') {
+            document.getElementById(`safe-${k}`).value = loose;
+          }
+          if (typeof rolls === 'number') {
+            document.getElementById(`safe-${k}-r`).value = rolls;
+          }
+        });
+        safeBillKeys.forEach((k)=>{
+          const val = counts.bills?.[k];
+          if (typeof val === 'number') {
+            document.getElementById(`safe-${k}`).value = val;
+          }
+        });
+      }
+
       function calc(){
         // returns totals in cents for each drawer [d3,d2,d1]
         const totalsC = [0,0,0];
@@ -143,11 +206,27 @@
             totalsC[di] += loose * valuesC[i] + rolls * rollC[i];
           });
         });
+
+        let safeTotalC = 0;
+        safeCoinIds.forEach(([looseId, rollId], i)=>{
+          const loose = readInt(document.getElementById(looseId));
+          const rolls = readInt(document.getElementById(rollId));
+          safeTotalC += loose * valuesC[i] + rolls * rollC[i];
+        });
+        safeBillKeys.forEach((k)=>{
+          const count = readInt(document.getElementById(`safe-${k}`));
+          safeTotalC += count * safeBillValuesC[k];
+        });
+
+        const grandTotalC = totalsC.reduce((a,b)=>a+b,0) + safeTotalC;
+
         // render
         $('#t3').textContent = fmt(totalsC[0]);
         $('#t2').textContent = fmt(totalsC[1]);
         $('#t1').textContent = fmt(totalsC[2]);
-        return totalsC;
+        $('#ts').textContent = fmt(safeTotalC);
+        $('#tall').textContent = fmt(grandTotalC);
+        return { totalsC, safeTotalC, grandTotalC };
       }
 
       function selectOnFocus(e){ e.target.select(); }
@@ -157,11 +236,12 @@
       async function saveCounts(){
         const drawersPayload = {};
         drawers.forEach((d)=>{ drawersPayload[d] = readDrawerCounts(d); });
+        const safePayload = readSafeCounts();
         try {
           await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ drawers: drawersPayload })
+            body: JSON.stringify({ drawers: drawersPayload, safe: safePayload })
           });
         } catch (err) {
           console.error('Save failed', err);
@@ -175,7 +255,13 @@
       }
 
       // Wire inputs
-      idsByDrawer.flat().flat().forEach(id => {
+      const allInputIds = [
+        ...idsByDrawer.flat().flat(),
+        ...safeCoinIds.flat(),
+        ...safeBillIds.flat().filter(Boolean)
+      ];
+
+      allInputIds.forEach(id => {
         const el = document.getElementById(id);
         el.addEventListener('input', () => { calc(); queueSave(); });
         el.addEventListener('focus', selectOnFocus);
@@ -236,6 +322,7 @@
         console.group('ChangeCount tests');
         console.assert(computeTotalCents([1,0,0,0],[0,0,0,0]) === 25, 'Quarter loose = 25¢');
         console.assert(computeTotalCents([0,0,0,0],[1,0,0,0]) === 1000, 'Quarter roll = $10');
+        console.assert(safeBillValuesC.clip1 === 2000, 'Clip of $1s worth $20');
         // Balance logic sample: $8.41 should remove [1,1,1,1] if all exist
         (function(){
           let cents=41, avail=[5,5,5,5], take=[0,0,0,0];
@@ -252,6 +339,7 @@
             const payload = await res.json();
             if (payload && payload.drawers) {
               drawers.forEach((d)=> applyDrawerCounts(d, payload.drawers[d]));
+              applySafeCounts(payload.safe);
             }
           } else {
             console.warn('Load failed', res.status);
