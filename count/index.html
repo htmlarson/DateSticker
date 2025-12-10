@@ -29,6 +29,8 @@
     .row{display:grid;grid-template-columns:1fr 110px 110px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}
     .row:last-child{border-bottom:0}
     .row--safe-heading,.row--safe{grid-template-columns:1fr 120px}
+    .row--bill-heading{grid-template-columns:1fr 110px 110px;font-weight:700;color:#e5e7eb}
+    .row--bill{grid-template-columns:1fr 110px 110px}
     label{color:#d1d5db;font-weight:600}
     input[type=number]{width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--ink);text-align:right;transition:border-color .15s ease,box-shadow .15s ease}
     input[type=number]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
@@ -67,6 +69,13 @@
           <div class="row"><label for="d1-d">Dimes</label><input id="d1-d" name="d1-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-d-r" name="d1-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
           <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-n-r" name="d1-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
           <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-p-r" name="d1-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row row--bill-heading"><span></span><div class="hintcell">Bills</div><div class="hintcell">—</div></div>
+          <div class="row row--bill"><label for="d1-1">$1</label><input id="d1-1" name="d1-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d1-5">$5</label><input id="d1-5" name="d1-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d1-10">$10</label><input id="d1-10" name="d1-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d1-20">$20</label><input id="d1-20" name="d1-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d1-50">$50</label><input id="d1-50" name="d1-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d1-100">$100</label><input id="d1-100" name="d1-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
         </fieldset>
         <div class="box"><span class="label">Drawer 1 subtotal</span><span class="value" id="t1">$0.00</span></div>
       </div>
@@ -83,6 +92,13 @@
           <div class="row"><label for="d2-d">Dimes</label><input id="d2-d" name="d2-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-d-r" name="d2-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
           <div class="row"><label for="d2-n">Nickels</label><input id="d2-n" name="d2-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-n-r" name="d2-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
           <div class="row"><label for="d2-p">Pennies</label><input id="d2-p" name="d2-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-p-r" name="d2-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row row--bill-heading"><span></span><div class="hintcell">Bills</div><div class="hintcell">—</div></div>
+          <div class="row row--bill"><label for="d2-1">$1</label><input id="d2-1" name="d2-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d2-5">$5</label><input id="d2-5" name="d2-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d2-10">$10</label><input id="d2-10" name="d2-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d2-20">$20</label><input id="d2-20" name="d2-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d2-50">$50</label><input id="d2-50" name="d2-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d2-100">$100</label><input id="d2-100" name="d2-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
         </fieldset>
         <div class="box"><span class="label">Drawer 2 subtotal</span><span class="value" id="t2">$0.00</span></div>
       </div>
@@ -99,6 +115,13 @@
           <div class="row"><label for="d3-d">Dimes</label><input id="d3-d" name="d3-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-d-r" name="d3-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
           <div class="row"><label for="d3-n">Nickels</label><input id="d3-n" name="d3-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-n-r" name="d3-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
           <div class="row"><label for="d3-p">Pennies</label><input id="d3-p" name="d3-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-p-r" name="d3-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row row--bill-heading"><span></span><div class="hintcell">Bills</div><div class="hintcell">—</div></div>
+          <div class="row row--bill"><label for="d3-1">$1</label><input id="d3-1" name="d3-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d3-5">$5</label><input id="d3-5" name="d3-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d3-10">$10</label><input id="d3-10" name="d3-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d3-20">$20</label><input id="d3-20" name="d3-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d3-50">$50</label><input id="d3-50" name="d3-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row row--bill"><label for="d3-100">$100</label><input id="d3-100" name="d3-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
         </fieldset>
         <div class="box"><span class="label">Drawer 3 subtotal</span><span class="value" id="t3">$0.00</span></div>
       </div>
@@ -135,10 +158,12 @@
       const $ = (sel, el=document) => el.querySelector(sel);
 
       // Denomination cents and roll values in cents to avoid float errors
-      const keys = ['q','d','n','p'];
-      const valuesC = [25,10,5,1];
+      const coinKeys = ['q','d','n','p'];
+      const coinValuesC = [25,10,5,1];
       const rollC   = [1000,500,200,50]; // quarters,dimes,nickels,pennies
-      const safeCoinKeys = keys;
+      const billKeys = ['1','5','10','20','50','100'];
+      const billValuesC = { '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
+      const safeCoinKeys = coinKeys;
       const safeBillKeys = ['clip1','1','5','10','20','50','100'];
       const safeBillValuesC = { clip1: 2000, '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
       const drawers = [1,2,3];
@@ -158,7 +183,11 @@
       }
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
-      const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
+      const idsByDrawer = drawers.map(d => {
+        const coinIds = coinKeys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]);
+        const billIds = billKeys.map(k => [`d${d}-${k}`, null]);
+        return [...coinIds, ...billIds];
+      });
       const safeCoinRollIds = safeCoinKeys.map(k => `safe-${k}-r`);
       const safeBillIds = safeBillKeys.map(k => [`safe-${k}`, null]);
 
@@ -175,10 +204,13 @@
       }
 
       function readDrawerCounts(drawerNum){
-        const counts = {};
-        keys.forEach((k)=>{
-          counts[k] = readInt(document.getElementById(`d${drawerNum}-${k}`));
-          counts[`${k}R`] = readInt(document.getElementById(`d${drawerNum}-${k}-r`));
+        const counts = { coins: {}, bills: {} };
+        coinKeys.forEach((k)=>{
+          counts.coins[k] = readInt(document.getElementById(`d${drawerNum}-${k}`));
+          counts.coins[`${k}R`] = readInt(document.getElementById(`d${drawerNum}-${k}-r`));
+        });
+        billKeys.forEach((k)=>{
+          counts.bills[k] = readInt(document.getElementById(`d${drawerNum}-${k}`));
         });
         return counts;
       }
@@ -198,14 +230,20 @@
 
       function applyDrawerCounts(drawerNum, counts){
         if (!counts) return;
-        keys.forEach((k)=>{
-          const loose = counts[k];
-          const rolls = counts[`${k}R`];
+        coinKeys.forEach((k)=>{
+          const loose = counts.coins?.[k] ?? counts[k];
+          const rolls = counts.coins?.[`${k}R`] ?? counts[`${k}R`];
           if (typeof loose === 'number') {
             document.getElementById(`d${drawerNum}-${k}`).value = loose;
           }
           if (typeof rolls === 'number') {
             document.getElementById(`d${drawerNum}-${k}-r`).value = rolls;
+          }
+        });
+        billKeys.forEach((k)=>{
+          const val = counts.bills?.[k] ?? counts[k];
+          if (typeof val === 'number') {
+            document.getElementById(`d${drawerNum}-${k}`).value = val;
           }
         });
       }
@@ -228,13 +266,16 @@
 
       function calc(){
         const drawerTotalsC = { 1:0, 2:0, 3:0 };
-        idsByDrawer.forEach((pairs, di)=>{
-          const drawerNum = drawers[di];
+        drawers.forEach((drawerNum)=>{
           let subtotal = 0;
-          pairs.forEach(([looseId, rollId], i)=>{
-            const loose = readInt(document.getElementById(looseId));
-            const rolls = readInt(document.getElementById(rollId));
-            subtotal += loose * valuesC[i] + rolls * rollC[i];
+          coinKeys.forEach((k, i)=>{
+            const loose = readInt(document.getElementById(`d${drawerNum}-${k}`));
+            const rolls = readInt(document.getElementById(`d${drawerNum}-${k}-r`));
+            subtotal += loose * coinValuesC[i] + rolls * rollC[i];
+          });
+          billKeys.forEach((k)=>{
+            const count = readInt(document.getElementById(`d${drawerNum}-${k}`));
+            subtotal += count * billValuesC[k];
           });
           drawerTotalsC[drawerNum] = subtotal;
         });
@@ -292,7 +333,7 @@
 
       // Wire inputs
       const allInputIds = [
-        ...idsByDrawer.flat().flat(),
+        ...idsByDrawer.flat().flat().filter(Boolean),
         ...safeCoinRollIds,
         ...safeBillIds.flat().filter(Boolean)
       ];
@@ -329,16 +370,16 @@
           if (cents === 0) { toast('Already whole dollars.'); return; }
 
           // Current loose counts for this drawer
-          const looseIds = keys.map((k)=>`d${drawerNum}-${k}`);
+          const looseIds = coinKeys.map((k)=>`d${drawerNum}-${k}`);
           const looseCounts = looseIds.map(id => readInt(document.getElementById(id)));
 
           const toRemove = [0,0,0,0];
-          for (let i=0;i<valuesC.length;i++){
-            const need = Math.floor(cents / valuesC[i]);
+          for (let i=0;i<coinValuesC.length;i++){
+            const need = Math.floor(cents / coinValuesC[i]);
             if (need <= 0) continue;
             const take = Math.min(need, looseCounts[i]);
             toRemove[i] = take;
-            cents -= take * valuesC[i];
+            cents -= take * coinValuesC[i];
           }
 
           if (cents > 0) { toast('Not enough loose change to balance.'); return; }
@@ -368,7 +409,7 @@
       (function tests(){
         function computeTotalCents(loose, rolls){
           // loose/rolls arrays in order [q,d,n,p]
-          let c=0; for(let i=0;i<4;i++){ c += loose[i]*valuesC[i] + rolls[i]*rollC[i]; } return c;
+          let c=0; for(let i=0;i<4;i++){ c += loose[i]*coinValuesC[i] + rolls[i]*rollC[i]; } return c;
         }
         console.group('ChangeCount tests');
         console.assert(computeTotalCents([1,0,0,0],[0,0,0,0]) === 25, 'Quarter loose = 25¢');
@@ -377,7 +418,7 @@
         // Balance logic sample: $8.41 should remove [1,1,1,1] if all exist
         (function(){
           let cents=41, avail=[5,5,5,5], take=[0,0,0,0];
-          for(let i=0;i<4;i++){ const need=Math.floor(cents/valuesC[i]); const got=Math.min(need, avail[i]); take[i]=got; cents-=got*valuesC[i]; }
+          for(let i=0;i<4;i++){ const need=Math.floor(cents/coinValuesC[i]); const got=Math.min(need, avail[i]); take[i]=got; cents-=got*coinValuesC[i]; }
           console.assert(JSON.stringify(take)==='[1,1,1,1]' && cents===0, 'Greedy removal 41¢');
         })();
         console.groupEnd();
