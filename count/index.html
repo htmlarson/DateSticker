@@ -9,10 +9,12 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--ink);padding:20px}
     h1{margin:0 0 12px;text-align:center}
-    .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+    .colwrap{display:grid;gap:10px;height:100%}
+    .colwrap--safe{grid-column:1/-1;max-width:540px;justify-self:center;width:100%}
     @media (max-width:900px){.wrap{grid-template-columns:1fr}}
 
-    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0}
+    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0;width:100%}
     legend{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-weight:600}
 
     .col{padding:12px}
@@ -23,10 +25,7 @@
     input[type=number]{width:110px;justify-self:end;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--ink);text-align:right}
     .hintcell{color:#9ca3af;font-size:.8rem;text-align:center}
 
-    .totals{margin-top:16px;display:grid;gap:12px}
-    .totals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .totals-grid--main{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
-    .totals-grid--wide{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .totals-stack{display:grid;gap:8px}
     .box{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:#0f172a}
     .label{display:block;color:#9ca3af;font-size:0.85rem;margin-bottom:4px}
     .value{font-variant-numeric:tabular-nums;font-weight:700}
@@ -42,75 +41,78 @@
   <p style="text-align:center;color:#9ca3af;margin-top:4px;margin-bottom:18px;">Saved with key: <strong id="date-key"></strong></p>
   <div class="wrap">
     <!-- Drawer 3 (left) -->
-    <fieldset class="col" aria-labelledby="d3-legend">
-      <legend id="d3-legend">Drawer 3</legend>
-      <div class="controls"><button type="button" data-balance="3">Balance</button></div>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
-      </div>
-      <div class="row"><label for="d3-q">Quarters</label><input id="d3-q" name="d3-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-q-r" name="d3-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d3-d">Dimes</label><input id="d3-d" name="d3-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-d-r" name="d3-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d3-n">Nickels</label><input id="d3-n" name="d3-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-n-r" name="d3-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d3-p">Pennies</label><input id="d3-p" name="d3-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-p-r" name="d3-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-    </fieldset>
+    <div class="colwrap">
+      <fieldset class="col" aria-labelledby="d3-legend">
+        <legend id="d3-legend">Drawer 3</legend>
+        <div class="controls"><button type="button" data-balance="3">Balance</button></div>
+        <div class="row">
+          <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+        </div>
+        <div class="row"><label for="d3-q">Quarters</label><input id="d3-q" name="d3-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-q-r" name="d3-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d3-d">Dimes</label><input id="d3-d" name="d3-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-d-r" name="d3-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d3-n">Nickels</label><input id="d3-n" name="d3-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-n-r" name="d3-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d3-p">Pennies</label><input id="d3-p" name="d3-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-p-r" name="d3-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+      </fieldset>
+      <div class="box"><span class="label">Drawer 3 subtotal</span><span class="value" id="t3">$0.00</span></div>
+    </div>
 
     <!-- Drawer 2 (middle) -->
-    <fieldset class="col" aria-labelledby="d2-legend">
-      <legend id="d2-legend">Drawer 2</legend>
-      <div class="controls"><button type="button" data-balance="2">Balance</button></div>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
-      </div>
-      <div class="row"><label for="d2-q">Quarters</label><input id="d2-q" name="d2-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-q-r" name="d2-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d2-d">Dimes</label><input id="d2-d" name="d2-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-d-r" name="d2-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d2-n">Nickels</label><input id="d2-n" name="d2-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-n-r" name="d2-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d2-p">Pennies</label><input id="d2-p" name="d2-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-p-r" name="d2-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-    </fieldset>
+    <div class="colwrap">
+      <fieldset class="col" aria-labelledby="d2-legend">
+        <legend id="d2-legend">Drawer 2</legend>
+        <div class="controls"><button type="button" data-balance="2">Balance</button></div>
+        <div class="row">
+          <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+        </div>
+        <div class="row"><label for="d2-q">Quarters</label><input id="d2-q" name="d2-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-q-r" name="d2-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d2-d">Dimes</label><input id="d2-d" name="d2-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-d-r" name="d2-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d2-n">Nickels</label><input id="d2-n" name="d2-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-n-r" name="d2-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d2-p">Pennies</label><input id="d2-p" name="d2-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-p-r" name="d2-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+      </fieldset>
+      <div class="box"><span class="label">Drawer 2 subtotal</span><span class="value" id="t2">$0.00</span></div>
+    </div>
 
     <!-- Drawer 1 (right) -->
-    <fieldset class="col" aria-labelledby="d1-legend">
-      <legend id="d1-legend">Drawer 1</legend>
-      <div class="controls"><button type="button" data-balance="1">Balance</button></div>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
-      </div>
-      <div class="row"><label for="d1-q">Quarters</label><input id="d1-q" name="d1-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-q-r" name="d1-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d1-d">Dimes</label><input id="d1-d" name="d1-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-d-r" name="d1-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-n-r" name="d1-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-p-r" name="d1-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-    </fieldset>
+    <div class="colwrap">
+      <fieldset class="col" aria-labelledby="d1-legend">
+        <legend id="d1-legend">Drawer 1</legend>
+        <div class="controls"><button type="button" data-balance="1">Balance</button></div>
+        <div class="row">
+          <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+        </div>
+        <div class="row"><label for="d1-q">Quarters</label><input id="d1-q" name="d1-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-q-r" name="d1-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d1-d">Dimes</label><input id="d1-d" name="d1-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-d-r" name="d1-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-n-r" name="d1-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-p-r" name="d1-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+      </fieldset>
+      <div class="box"><span class="label">Drawer 1 subtotal</span><span class="value" id="t1">$0.00</span></div>
+    </div>
 
     <!-- Safe -->
-    <fieldset class="col" aria-labelledby="safe-legend">
-      <legend id="safe-legend">Safe</legend>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+    <div class="colwrap colwrap--safe">
+      <fieldset class="col" aria-labelledby="safe-legend">
+        <legend id="safe-legend">Safe</legend>
+        <div class="row">
+          <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+        </div>
+        <div class="row"><label for="safe-q">Quarters</label><input id="safe-q" name="safe-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-q-r" name="safe-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row"><label for="safe-d">Dimes</label><input id="safe-d" name="safe-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-d-r" name="safe-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row"><label for="safe-n">Nickels</label><input id="safe-n" name="safe-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-n-r" name="safe-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row"><label for="safe-p">Pennies</label><input id="safe-p" name="safe-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-p-r" name="safe-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row"><label for="safe-clip1">Clips of $1 (=$20)</label><input id="safe-clip1" name="safe-clip1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        <div class="row"><label for="safe-1">Loose $1</label><input id="safe-1" name="safe-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        <div class="row"><label for="safe-5">Loose $5</label><input id="safe-5" name="safe-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        <div class="row"><label for="safe-10">Loose $10</label><input id="safe-10" name="safe-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        <div class="row"><label for="safe-20">Loose $20</label><input id="safe-20" name="safe-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        <div class="row"><label for="safe-50">Loose $50</label><input id="safe-50" name="safe-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        <div class="row"><label for="safe-100">Loose $100</label><input id="safe-100" name="safe-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+      </fieldset>
+      <div class="totals-stack">
+        <div class="box"><span class="label">Safe subtotal</span><span class="value" id="ts">$0.00</span></div>
+        <div class="box"><span class="label">All drawers + safe</span><span class="value" id="tall">$0.00</span></div>
       </div>
-      <div class="row"><label for="safe-q">Quarters</label><input id="safe-q" name="safe-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-q-r" name="safe-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-      <div class="row"><label for="safe-d">Dimes</label><input id="safe-d" name="safe-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-d-r" name="safe-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-      <div class="row"><label for="safe-n">Nickels</label><input id="safe-n" name="safe-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-n-r" name="safe-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-      <div class="row"><label for="safe-p">Pennies</label><input id="safe-p" name="safe-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-p-r" name="safe-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-      <div class="row"><label for="safe-clip1">Clips of $1 (=$20)</label><input id="safe-clip1" name="safe-clip1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-      <div class="row"><label for="safe-1">Loose $1</label><input id="safe-1" name="safe-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-      <div class="row"><label for="safe-5">Loose $5</label><input id="safe-5" name="safe-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-      <div class="row"><label for="safe-10">Loose $10</label><input id="safe-10" name="safe-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-      <div class="row"><label for="safe-20">Loose $20</label><input id="safe-20" name="safe-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-      <div class="row"><label for="safe-50">Loose $50</label><input id="safe-50" name="safe-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-      <div class="row"><label for="safe-100">Loose $100</label><input id="safe-100" name="safe-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
-    </fieldset>
+    </div>
   </div>
-
-  <section class="totals" aria-live="polite">
-    <div class="totals-grid totals-grid--main">
-      <div class="box"><span class="label">Drawer 3</span><span class="value" id="t3">$0.00</span></div>
-      <div class="box"><span class="label">Drawer 2</span><span class="value" id="t2">$0.00</span></div>
-      <div class="box"><span class="label">Drawer 1</span><span class="value" id="t1">$0.00</span></div>
-      <div class="box"><span class="label">Safe subtotal</span><span class="value" id="ts">$0.00</span></div>
-    </div>
-    <div class="totals-grid totals-grid--wide">
-      <div class="box"><span class="label">All drawers + safe</span><span class="value" id="tall">$0.00</span></div>
-    </div>
-  </section>
 
   <script>
     (async function(){
