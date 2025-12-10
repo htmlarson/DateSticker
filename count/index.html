@@ -14,6 +14,7 @@
     .date-row label{text-transform:uppercase;letter-spacing:.05em;font-size:.85rem}
     .date-row input[type=date]{background:rgba(255,255,255,.04);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700;letter-spacing:.02em}
     .date-row input[type=date]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .last-edited{color:var(--muted);text-align:center;font-weight:700;margin:-8px 0 14px;letter-spacing:.01em}
     .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start;margin-top:10px}
     .colwrap{display:grid;gap:12px;height:100%;align-self:start;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.32)}
     .colwrap--safe{grid-column:1/-1;max-width:720px;justify-self:center;width:100%;padding:0;background:none;border:0;box-shadow:none}
@@ -52,6 +53,7 @@
       <label for="date-picker">For</label>
       <input type="date" id="date-picker" />
     </div>
+    <div class="last-edited" id="last-edited">Last edited: —</div>
     <div class="wrap">
       <!-- Drawer 1 -->
       <div class="colwrap">
@@ -142,9 +144,18 @@
       const drawers = [1,2,3];
 
       const datePicker = document.getElementById('date-picker');
+      const lastEditedEl = document.getElementById('last-edited');
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
       datePicker.value = today;
       let dateKey = datePicker.value || today;
+
+      function renderLastEdited(iso){
+        if (!iso) { lastEditedEl.textContent = 'Last edited: —'; return; }
+        const parsed = new Date(iso);
+        if (isNaN(parsed.getTime())) { lastEditedEl.textContent = 'Last edited: —'; return; }
+        const formatted = parsed.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+        lastEditedEl.textContent = `Last edited: ${formatted}`;
+      }
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
       const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
@@ -259,11 +270,15 @@
         drawers.forEach((d)=>{ drawersPayload[d] = readDrawerCounts(d); });
         const safePayload = readSafeCounts();
         try {
-          await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
+          const res = await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ drawers: drawersPayload, safe: safePayload })
           });
+          if (res.ok) {
+            const payload = await res.json().catch(()=> null);
+            renderLastEdited(payload?.updatedAt);
+          }
         } catch (err) {
           console.error('Save failed', err);
           toast('Unable to save right now.');
@@ -300,6 +315,7 @@
         clearTimeout(saveTimer);
         updateDateKey(datePicker.value);
         clearAllInputs();
+        renderLastEdited(null);
         await loadSavedCounts();
         calc();
       });
@@ -376,16 +392,20 @@
               drawers.forEach((d)=> applyDrawerCounts(d, payload.drawers[d]));
               applySafeCounts(payload.safe);
             }
+            renderLastEdited(payload?.updatedAt);
           } else {
             console.warn('Load failed', res.status);
+            renderLastEdited(null);
           }
         } catch (err) {
           console.error('Load failed', err);
           toast('Unable to load saved counts.');
+          renderLastEdited(null);
         }
       }
 
       // initial render
+      renderLastEdited(null);
       await loadSavedCounts();
       calc();
     })();

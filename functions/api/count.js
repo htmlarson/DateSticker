@@ -49,11 +49,13 @@ export async function onRequest(context) {
     }
 
     try {
+      const updatedAt = new Date().toISOString();
       await env.KV.put(dateKey, JSON.stringify({
         drawers: payload.drawers,
-        safe: payload.safe
+        safe: payload.safe,
+        updatedAt
       }));
-      return jsonResponse(200, { ok: true });
+      return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
       console.error('KV put failed', err);
       return jsonResponse(500, { error: 'Unable to save counts.' });
