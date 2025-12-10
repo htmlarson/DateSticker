@@ -13,6 +13,20 @@ function jsonResponse(status, body) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
 
+function unauthorizedResponse(message = 'Unauthorized') {
+  return jsonResponse(401, { error: message });
+}
+
+async function validateSession(request, env) {
+  const authHeader = request.headers.get('authorization') || '';
+  const match = authHeader.match(/^Bearer\s+(.+)/i);
+  if (!match) return null;
+  const token = match[1].trim();
+  if (!token) return null;
+  const sessionValue = await env.KV.get(`passkey:session:${token}`);
+  return sessionValue ? token : null;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -24,6 +38,11 @@ export async function onRequest(context) {
 
   if (!env.KV) {
     return jsonResponse(500, { error: 'KV binding not configured.' });
+  }
+
+  const sessionToken = await validateSession(request, env);
+  if (!sessionToken) {
+    return unauthorizedResponse('Passkey session required.');
   }
 
   if (request.method === 'GET') {
