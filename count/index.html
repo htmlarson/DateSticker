@@ -9,15 +9,16 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--ink);padding:20px}
     h1{margin:0 0 12px;text-align:center}
-    .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start}
-    .colwrap{display:grid;gap:12px;height:100%;align-self:start}
-    .colwrap--safe{grid-column:1/-1;max-width:560px;justify-self:center;width:100%}
+    .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start}
+    .colwrap{display:grid;gap:14px;height:100%;align-self:start;padding:14px;border:1px solid var(--line);border-radius:16px;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.04),rgba(255,255,255,0)),#0c1323;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+    .colwrap--safe{grid-column:1/-1;max-width:620px;justify-self:center;width:100%;padding:0;background:none;border:0;box-shadow:none}
     @media (max-width:900px){.wrap{grid-template-columns:1fr}}
 
-    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0;width:100%;background:#0b1220;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    legend{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-weight:600}
+    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0;width:100%;background:#0b1220;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 28px rgba(0,0,0,.25)}
+    legend{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-weight:700;letter-spacing:.01em;background:#0f172a}
 
-    .col{padding:12px}
+    .col{padding:14px}
+    .drawer{background:linear-gradient(160deg,#0e1526 0%,#0a1020 100%);border-color:#1f2a3b}
     /* label | loose | rolls */
     .row{display:grid;grid-template-columns:1fr 120px 120px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}
     .row:last-child{border-bottom:0}
@@ -43,7 +44,7 @@
   <div class="wrap">
     <!-- Drawer 3 (left) -->
     <div class="colwrap">
-      <fieldset class="col" aria-labelledby="d3-legend">
+      <fieldset class="col drawer" aria-labelledby="d3-legend">
         <legend id="d3-legend">Drawer 3</legend>
         <div class="controls"><button type="button" data-balance="3">Balance</button></div>
         <div class="row">
@@ -59,7 +60,7 @@
 
     <!-- Drawer 2 (middle) -->
     <div class="colwrap">
-      <fieldset class="col" aria-labelledby="d2-legend">
+      <fieldset class="col drawer" aria-labelledby="d2-legend">
         <legend id="d2-legend">Drawer 2</legend>
         <div class="controls"><button type="button" data-balance="2">Balance</button></div>
         <div class="row">
@@ -75,7 +76,7 @@
 
     <!-- Drawer 1 (right) -->
     <div class="colwrap">
-      <fieldset class="col" aria-labelledby="d1-legend">
+      <fieldset class="col drawer" aria-labelledby="d1-legend">
         <legend id="d1-legend">Drawer 1</legend>
         <div class="controls"><button type="button" data-balance="1">Balance</button></div>
         <div class="row">
