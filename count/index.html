@@ -5,87 +5,128 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Change Count</title>
   <style>
-    :root { --bg:#111827; --ink:#e5e7eb; --line:#374151; }
+    :root { --bg:#0b1221; --panel:#0f172a; --ink:#e5e7eb; --line:#243249; --muted:#9ca3af; }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--ink);padding:20px}
-    h1{margin:0 0 12px;text-align:center}
-    .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.04),rgba(255,255,255,0)),var(--bg);color:var(--ink);padding:24px}
+    .page{max-width:1200px;margin:0 auto}
+    h1{margin:0 0 10px;text-align:center;letter-spacing:.01em}
+    .date-row{display:flex;justify-content:center;align-items:center;gap:10px;color:#9ca3af;margin:6px 0 18px;font-weight:600}
+    .date-row label{text-transform:uppercase;letter-spacing:.05em;font-size:.85rem}
+    .date-row input[type=date]{background:rgba(255,255,255,.04);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700;letter-spacing:.02em}
+    .date-row input[type=date]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start;margin-top:10px}
+    .colwrap{display:grid;gap:12px;height:100%;align-self:start;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.32)}
+    .colwrap--safe{grid-column:1/-1;max-width:720px;justify-self:center;width:100%;padding:0;background:none;border:0;box-shadow:none}
     @media (max-width:900px){.wrap{grid-template-columns:1fr}}
 
-    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0}
-    legend{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-weight:600}
+    fieldset{border:1px solid var(--line);border-radius:14px;min-width:0;width:100%;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+    legend{padding:7px 12px;border:1px solid var(--line);border-radius:999px;font-weight:700;letter-spacing:.01em;background:var(--panel);box-shadow:0 4px 12px rgba(0,0,0,.28)}
 
-    .col{padding:12px}
+    .col{padding:14px}
+    .drawer legend{color:#f3f4f6}
     /* label | loose | rolls */
-    .row{display:grid;grid-template-columns:1fr 110px 110px;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+    .row{display:grid;grid-template-columns:1fr 110px 110px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}
     .row:last-child{border-bottom:0}
-    label{color:#cbd5e1}
-    input[type=number]{width:110px;justify-self:end;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--ink);text-align:right}
-    .hintcell{color:#9ca3af;font-size:.8rem;text-align:center}
+    .row--safe-heading,.row--safe{grid-template-columns:1fr 120px}
+    label{color:#d1d5db;font-weight:600}
+    input[type=number]{width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--ink);text-align:right;transition:border-color .15s ease,box-shadow .15s ease}
+    input[type=number]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .hintcell{color:var(--muted);font-size:.82rem;text-align:center;font-weight:600;letter-spacing:.01em}
 
-    .totals{margin-top:16px;display:grid;gap:12px}
-    .totals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-    .box{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:#0f172a}
-    .label{display:block;color:#9ca3af;font-size:0.85rem;margin-bottom:4px}
-    .value{font-variant-numeric:tabular-nums;font-weight:700}
+    .totals-stack{display:grid;gap:10px}
+    .box{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;background:var(--panel);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+    .label{display:block;color:var(--muted);font-size:0.85rem;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+    .value{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.05rem}
 
-    .controls{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:-6px -6px 8px 0}
-    button{background:#0f172a;border:1px solid var(--line);color:var(--ink);padding:6px 10px;border-radius:8px;font-weight:600;cursor:pointer}
-    button:hover{filter:brightness(1.15)}
+    .controls{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:-4px -4px 10px 0}
+    button{background:linear-gradient(180deg,#111a2c,#0d1423);border:1px solid var(--line);color:var(--ink);padding:7px 12px;border-radius:10px;font-weight:700;cursor:pointer;letter-spacing:.01em;transition:transform .08s ease,filter .15s ease}
+    button:hover{filter:brightness(1.1)}
+    button:active{transform:translateY(1px)}
     .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;border:1px solid var(--line);padding:8px 10px;border-radius:999px;color:#e5e7eb;z-index:100}
   </style>
 </head>
-<body>
-  <h1>Change Count</h1>
-  <p style="text-align:center;color:#9ca3af;margin-top:4px;margin-bottom:18px;">Saved with key: <strong id="date-key"></strong></p>
-  <div class="wrap">
-    <!-- Drawer 3 (left) -->
-    <fieldset class="col" aria-labelledby="d3-legend">
-      <legend id="d3-legend">Drawer 3</legend>
-      <div class="controls"><button type="button" data-balance="3">Balance</button></div>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
-      </div>
-      <div class="row"><label for="d3-q">Quarters</label><input id="d3-q" name="d3-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-q-r" name="d3-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d3-d">Dimes</label><input id="d3-d" name="d3-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-d-r" name="d3-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d3-n">Nickels</label><input id="d3-n" name="d3-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-n-r" name="d3-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d3-p">Pennies</label><input id="d3-p" name="d3-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-p-r" name="d3-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-    </fieldset>
-
-    <!-- Drawer 2 (middle) -->
-    <fieldset class="col" aria-labelledby="d2-legend">
-      <legend id="d2-legend">Drawer 2</legend>
-      <div class="controls"><button type="button" data-balance="2">Balance</button></div>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
-      </div>
-      <div class="row"><label for="d2-q">Quarters</label><input id="d2-q" name="d2-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-q-r" name="d2-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d2-d">Dimes</label><input id="d2-d" name="d2-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-d-r" name="d2-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d2-n">Nickels</label><input id="d2-n" name="d2-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-n-r" name="d2-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d2-p">Pennies</label><input id="d2-p" name="d2-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-p-r" name="d2-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-    </fieldset>
-
-    <!-- Drawer 1 (right) -->
-    <fieldset class="col" aria-labelledby="d1-legend">
-      <legend id="d1-legend">Drawer 1</legend>
-      <div class="controls"><button type="button" data-balance="1">Balance</button></div>
-      <div class="row">
-        <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
-      </div>
-      <div class="row"><label for="d1-q">Quarters</label><input id="d1-q" name="d1-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-q-r" name="d1-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d1-d">Dimes</label><input id="d1-d" name="d1-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-d-r" name="d1-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-n-r" name="d1-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-      <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-p-r" name="d1-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
-    </fieldset>
-  </div>
-
-  <section class="totals" aria-live="polite">
-    <div class="totals-grid">
-      <div class="box"><span class="label">Drawer 3</span><span class="value" id="t3">$0.00</span></div>
-      <div class="box"><span class="label">Drawer 2</span><span class="value" id="t2">$0.00</span></div>
-      <div class="box"><span class="label">Drawer 1</span><span class="value" id="t1">$0.00</span></div>
+  <body>
+  <div class="page">
+    <h1>Change Count</h1>
+    <div class="date-row">
+      <label for="date-picker">For</label>
+      <input type="date" id="date-picker" />
     </div>
-  </section>
+    <div class="wrap">
+      <!-- Drawer 1 -->
+      <div class="colwrap">
+        <fieldset class="col drawer" aria-labelledby="d1-legend">
+          <legend id="d1-legend">Drawer 1</legend>
+          <div class="controls"><button type="button" data-balance="1">Balance</button></div>
+          <div class="row">
+            <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+          </div>
+          <div class="row"><label for="d1-q">Quarters</label><input id="d1-q" name="d1-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-q-r" name="d1-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d1-d">Dimes</label><input id="d1-d" name="d1-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-d-r" name="d1-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d1-n">Nickels</label><input id="d1-n" name="d1-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-n-r" name="d1-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d1-p">Pennies</label><input id="d1-p" name="d1-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d1-p-r" name="d1-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        </fieldset>
+        <div class="box"><span class="label">Drawer 1 subtotal</span><span class="value" id="t1">$0.00</span></div>
+      </div>
+
+      <!-- Drawer 2 -->
+      <div class="colwrap">
+        <fieldset class="col drawer" aria-labelledby="d2-legend">
+          <legend id="d2-legend">Drawer 2</legend>
+          <div class="controls"><button type="button" data-balance="2">Balance</button></div>
+          <div class="row">
+            <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+          </div>
+          <div class="row"><label for="d2-q">Quarters</label><input id="d2-q" name="d2-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-q-r" name="d2-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d2-d">Dimes</label><input id="d2-d" name="d2-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-d-r" name="d2-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d2-n">Nickels</label><input id="d2-n" name="d2-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-n-r" name="d2-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d2-p">Pennies</label><input id="d2-p" name="d2-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d2-p-r" name="d2-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        </fieldset>
+        <div class="box"><span class="label">Drawer 2 subtotal</span><span class="value" id="t2">$0.00</span></div>
+      </div>
+
+      <!-- Drawer 3 -->
+      <div class="colwrap">
+        <fieldset class="col drawer" aria-labelledby="d3-legend">
+          <legend id="d3-legend">Drawer 3</legend>
+          <div class="controls"><button type="button" data-balance="3">Balance</button></div>
+          <div class="row">
+            <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+          </div>
+          <div class="row"><label for="d3-q">Quarters</label><input id="d3-q" name="d3-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-q-r" name="d3-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d3-d">Dimes</label><input id="d3-d" name="d3-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-d-r" name="d3-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d3-n">Nickels</label><input id="d3-n" name="d3-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-n-r" name="d3-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+          <div class="row"><label for="d3-p">Pennies</label><input id="d3-p" name="d3-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="d3-p-r" name="d3-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0" tabindex="-1"></div>
+        </fieldset>
+        <div class="box"><span class="label">Drawer 3 subtotal</span><span class="value" id="t3">$0.00</span></div>
+      </div>
+
+      <!-- Safe -->
+      <div class="colwrap colwrap--safe">
+        <fieldset class="col" aria-labelledby="safe-legend">
+          <legend id="safe-legend">Safe</legend>
+          <div class="row row--safe-heading">
+            <span></span><div class="hintcell">Rolls</div>
+          </div>
+          <div class="row row--safe"><label for="safe-q-r">Quarters</label><input id="safe-q-r" name="safe-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <div class="row row--safe"><label for="safe-d-r">Dimes</label><input id="safe-d-r" name="safe-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <div class="row row--safe"><label for="safe-n-r">Nickels</label><input id="safe-n-r" name="safe-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <div class="row row--safe"><label for="safe-p-r">Pennies</label><input id="safe-p-r" name="safe-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+          <div class="row"><label for="safe-clip1">Clips of $1 (=$20)</label><input id="safe-clip1" name="safe-clip1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row"><label for="safe-1">Loose $1</label><input id="safe-1" name="safe-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row"><label for="safe-5">Loose $5</label><input id="safe-5" name="safe-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row"><label for="safe-10">Loose $10</label><input id="safe-10" name="safe-10" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row"><label for="safe-20">Loose $20</label><input id="safe-20" name="safe-20" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row"><label for="safe-50">Loose $50</label><input id="safe-50" name="safe-50" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+          <div class="row"><label for="safe-100">Loose $100</label><input id="safe-100" name="safe-100" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
+        </fieldset>
+        <div class="totals-stack">
+          <div class="box"><span class="label">Safe subtotal</span><span class="value" id="ts">$0.00</span></div>
+          <div class="box"><span class="label">All drawers + safe</span><span class="value" id="tall">$0.00</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     (async function(){
@@ -95,15 +136,27 @@
       const keys = ['q','d','n','p'];
       const valuesC = [25,10,5,1];
       const rollC   = [1000,500,200,50]; // quarters,dimes,nickels,pennies
-      const drawers = [3,2,1];
+      const safeCoinKeys = keys;
+      const safeBillKeys = ['clip1','1','5','10','20','50','100'];
+      const safeBillValuesC = { clip1: 2000, '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
+      const drawers = [1,2,3];
 
-      const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      $('#date-key').textContent = dateKey;
+      const datePicker = document.getElementById('date-picker');
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      datePicker.value = today;
+      let dateKey = datePicker.value || today;
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
       const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
+      const safeCoinRollIds = safeCoinKeys.map(k => `safe-${k}-r`);
+      const safeBillIds = safeBillKeys.map(k => [`safe-${k}`, null]);
 
       const fmt = cents => (cents/100).toLocaleString('en-US', {style:'currency',currency:'USD'});
+
+      function updateDateKey(newDate){
+        dateKey = newDate || today;
+        datePicker.value = dateKey;
+      }
 
       function readInt(el){
         const v = parseInt(el.value, 10);
@@ -117,6 +170,19 @@
           counts[`${k}R`] = readInt(document.getElementById(`d${drawerNum}-${k}-r`));
         });
         return counts;
+      }
+
+      function readSafeCounts(){
+        const coins = {};
+        safeCoinKeys.forEach((k, i)=>{
+          coins[k] = 0;
+          coins[`${k}R`] = readInt(document.getElementById(safeCoinRollIds[i]));
+        });
+        const bills = {};
+        safeBillKeys.forEach((k)=>{
+          bills[k] = readInt(document.getElementById(`safe-${k}`));
+        });
+        return { coins, bills };
       }
 
       function applyDrawerCounts(drawerNum, counts){
@@ -133,21 +199,55 @@
         });
       }
 
+      function applySafeCounts(counts){
+        if (!counts) return;
+        safeCoinKeys.forEach((k, i)=>{
+          const rolls = counts.coins?.[`${k}R`];
+          if (typeof rolls === 'number') {
+            document.getElementById(safeCoinRollIds[i]).value = rolls;
+          }
+        });
+        safeBillKeys.forEach((k)=>{
+          const val = counts.bills?.[k];
+          if (typeof val === 'number') {
+            document.getElementById(`safe-${k}`).value = val;
+          }
+        });
+      }
+
       function calc(){
-        // returns totals in cents for each drawer [d3,d2,d1]
-        const totalsC = [0,0,0];
+        const drawerTotalsC = { 1:0, 2:0, 3:0 };
         idsByDrawer.forEach((pairs, di)=>{
+          const drawerNum = drawers[di];
+          let subtotal = 0;
           pairs.forEach(([looseId, rollId], i)=>{
             const loose = readInt(document.getElementById(looseId));
             const rolls = readInt(document.getElementById(rollId));
-            totalsC[di] += loose * valuesC[i] + rolls * rollC[i];
+            subtotal += loose * valuesC[i] + rolls * rollC[i];
           });
+          drawerTotalsC[drawerNum] = subtotal;
         });
+
+        let safeTotalC = 0;
+        safeCoinRollIds.forEach((rollId, i)=>{
+          const rolls = readInt(document.getElementById(rollId));
+          safeTotalC += rolls * rollC[i];
+        });
+        safeBillKeys.forEach((k)=>{
+          const count = readInt(document.getElementById(`safe-${k}`));
+          safeTotalC += count * safeBillValuesC[k];
+        });
+
+        const drawersTotalC = drawers.reduce((acc, d)=> acc + drawerTotalsC[d], 0);
+        const grandTotalC = drawersTotalC + safeTotalC;
+
         // render
-        $('#t3').textContent = fmt(totalsC[0]);
-        $('#t2').textContent = fmt(totalsC[1]);
-        $('#t1').textContent = fmt(totalsC[2]);
-        return totalsC;
+        $('#t1').textContent = fmt(drawerTotalsC[1]);
+        $('#t2').textContent = fmt(drawerTotalsC[2]);
+        $('#t3').textContent = fmt(drawerTotalsC[3]);
+        $('#ts').textContent = fmt(safeTotalC);
+        $('#tall').textContent = fmt(grandTotalC);
+        return { drawerTotalsC, safeTotalC, grandTotalC };
       }
 
       function selectOnFocus(e){ e.target.select(); }
@@ -157,11 +257,12 @@
       async function saveCounts(){
         const drawersPayload = {};
         drawers.forEach((d)=>{ drawersPayload[d] = readDrawerCounts(d); });
+        const safePayload = readSafeCounts();
         try {
           await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ drawers: drawersPayload })
+            body: JSON.stringify({ drawers: drawersPayload, safe: safePayload })
           });
         } catch (err) {
           console.error('Save failed', err);
@@ -175,20 +276,40 @@
       }
 
       // Wire inputs
-      idsByDrawer.flat().flat().forEach(id => {
+      const allInputIds = [
+        ...idsByDrawer.flat().flat(),
+        ...safeCoinRollIds,
+        ...safeBillIds.flat().filter(Boolean)
+      ];
+
+      function clearAllInputs(){
+        allInputIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+
+      allInputIds.forEach(id => {
         const el = document.getElementById(id);
         el.addEventListener('input', () => { calc(); queueSave(); });
         el.addEventListener('focus', selectOnFocus);
         el.addEventListener('mouseup', keepSelection);
       });
 
+      datePicker.addEventListener('change', async () => {
+        clearTimeout(saveTimer);
+        updateDateKey(datePicker.value);
+        clearAllInputs();
+        await loadSavedCounts();
+        calc();
+      });
+
       // Balance (round down to whole dollars by removing loose coins only)
       document.querySelectorAll('[data-balance]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const drawerNum = parseInt(btn.getAttribute('data-balance'), 10); // 3/2/1
-          const di = drawers.indexOf(drawerNum); // 0/1/2
-          const totalsC = calc();
-          let cents = totalsC[di] % 100; // amount to remove
+          const drawerNum = parseInt(btn.getAttribute('data-balance'), 10);
+          const { drawerTotalsC } = calc();
+          let cents = drawerTotalsC[drawerNum] % 100; // amount to remove
           if (cents === 0) { toast('Already whole dollars.'); return; }
 
           // Current loose counts for this drawer
@@ -236,6 +357,7 @@
         console.group('ChangeCount tests');
         console.assert(computeTotalCents([1,0,0,0],[0,0,0,0]) === 25, 'Quarter loose = 25¢');
         console.assert(computeTotalCents([0,0,0,0],[1,0,0,0]) === 1000, 'Quarter roll = $10');
+        console.assert(safeBillValuesC.clip1 === 2000, 'Clip of $1s worth $20');
         // Balance logic sample: $8.41 should remove [1,1,1,1] if all exist
         (function(){
           let cents=41, avail=[5,5,5,5], take=[0,0,0,0];
@@ -252,6 +374,7 @@
             const payload = await res.json();
             if (payload && payload.drawers) {
               drawers.forEach((d)=> applyDrawerCounts(d, payload.drawers[d]));
+              applySafeCounts(payload.safe);
             }
           } else {
             console.warn('Load failed', res.status);

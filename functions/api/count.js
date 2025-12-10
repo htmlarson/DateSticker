@@ -44,12 +44,15 @@ export async function onRequest(context) {
       return jsonResponse(400, { error: 'Invalid JSON body.' });
     }
 
-    if (!payload || typeof payload.drawers !== 'object') {
-      return jsonResponse(400, { error: 'Body must include a drawers object.' });
+    if (!payload || typeof payload.drawers !== 'object' || typeof payload.safe !== 'object') {
+      return jsonResponse(400, { error: 'Body must include drawers and safe objects.' });
     }
 
     try {
-      await env.KV.put(dateKey, JSON.stringify({ drawers: payload.drawers }));
+      await env.KV.put(dateKey, JSON.stringify({
+        drawers: payload.drawers,
+        safe: payload.safe
+      }));
       return jsonResponse(200, { ok: true });
     } catch (err) {
       console.error('KV put failed', err);
