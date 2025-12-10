@@ -43,10 +43,30 @@
     button:hover{filter:brightness(1.1)}
     button:active{transform:translateY(1px)}
     .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;border:1px solid var(--line);padding:8px 10px;border-radius:999px;color:#e5e7eb;z-index:100}
+
+    /* passkey gate */
+    .gate{position:fixed;inset:0;display:grid;place-items:center;background:rgba(11,18,33,.86);backdrop-filter:blur(3px);z-index:200}
+    .gate--hidden{display:none}
+    .gate__card{background:#0f172a;border:1px solid var(--line);border-radius:18px;padding:22px 20px;max-width:320px;width:90%;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+    .gate__card h2{margin:0 0 8px;font-size:1.2rem}
+    .gate__hint{margin:0 0 12px;color:var(--muted)}
+    .gate__card input{width:100%;margin:0 0 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink)}
+    .gate__card input:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .gate__card button{width:100%}
+    .gate__error{color:#f87171;font-weight:700;margin:10px 0 0;min-height:1.2em}
   </style>
 </head>
   <body>
-  <div class="page">
+  <div class="gate gate--hidden" id="passkey-gate" aria-labelledby="gate-heading" role="dialog" aria-modal="true">
+    <div class="gate__card">
+      <h2 id="gate-heading">Enter passkey</h2>
+      <p class="gate__hint">A passkey is required to view and update counts.</p>
+      <input type="password" id="passkey-input" placeholder="Passkey" autocomplete="current-password" />
+      <button type="button" id="passkey-submit">Unlock</button>
+      <p class="gate__error" id="passkey-error" role="alert"></p>
+    </div>
+  </div>
+  <div class="page" aria-live="polite">
     <h1>Change Count</h1>
     <div class="date-row">
       <label for="date-picker">For</label>
@@ -132,6 +152,13 @@
     (async function(){
       const $ = (sel, el=document) => el.querySelector(sel);
 
+      const PASSKEY_STORAGE_KEY = 'count-passkey';
+      const gateEl = $('#passkey-gate');
+      const passkeyInput = $('#passkey-input');
+      const passkeyError = $('#passkey-error');
+      const passkeySubmit = $('#passkey-submit');
+      let passkey = localStorage.getItem(PASSKEY_STORAGE_KEY) || '';
+
       // Denomination cents and roll values in cents to avoid float errors
       const keys = ['q','d','n','p'];
       const valuesC = [25,10,5,1];
@@ -152,6 +179,42 @@
       const safeBillIds = safeBillKeys.map(k => [`safe-${k}`, null]);
 
       const fmt = cents => (cents/100).toLocaleString('en-US', {style:'currency',currency:'USD'});
+
+      function storePasskey(value){
+        passkey = (value || '').trim();
+        if (passkey) {
+          localStorage.setItem(PASSKEY_STORAGE_KEY, passkey);
+        } else {
+          localStorage.removeItem(PASSKEY_STORAGE_KEY);
+        }
+      }
+
+      function showGate(message=''){
+        passkeyError.textContent = message;
+        gateEl.classList.remove('gate--hidden');
+        setTimeout(()=> passkeyInput.focus(), 50);
+      }
+
+      function hideGate(){
+        gateEl.classList.add('gate--hidden');
+        passkeyError.textContent = '';
+      }
+
+      function handleUnauthorized(message='Passkey required.'){
+        storePasskey('');
+        showGate(message);
+      }
+
+      async function authorizedFetch(url, options={}){
+        const headers = { ...(options.headers || {}) };
+        if (passkey) headers['x-passkey'] = passkey;
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401) {
+          handleUnauthorized('Invalid or missing passkey.');
+          throw new Error('unauthorized');
+        }
+        return res;
+      }
 
       function updateDateKey(newDate){
         dateKey = newDate || today;
@@ -255,16 +318,18 @@
 
       let saveTimer;
       async function saveCounts(){
+        if (!passkey) return;
         const drawersPayload = {};
         drawers.forEach((d)=>{ drawersPayload[d] = readDrawerCounts(d); });
         const safePayload = readSafeCounts();
         try {
-          await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
+          await authorizedFetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ drawers: drawersPayload, safe: safePayload })
           });
         } catch (err) {
+          if (err.message === 'unauthorized') return;
           console.error('Save failed', err);
           toast('Unable to save right now.');
         }
@@ -300,8 +365,8 @@
         clearTimeout(saveTimer);
         updateDateKey(datePicker.value);
         clearAllInputs();
-        await loadSavedCounts();
-        calc();
+        const loaded = await loadSavedCounts();
+        if (loaded) calc();
       });
 
       // Balance (round down to whole dollars by removing loose coins only)
@@ -369,7 +434,8 @@
 
       async function loadSavedCounts(){
         try {
-          const res = await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`);
+          if (!passkey) { throw new Error('unauthorized'); }
+          const res = await authorizedFetch(`/api/count?date=${encodeURIComponent(dateKey)}`);
           if (res.ok) {
             const payload = await res.json();
             if (payload && payload.drawers) {
@@ -380,14 +446,38 @@
             console.warn('Load failed', res.status);
           }
         } catch (err) {
+          if (err.message === 'unauthorized') { return false; }
           console.error('Load failed', err);
           toast('Unable to load saved counts.');
+          return false;
         }
+        return true;
       }
 
       // initial render
-      await loadSavedCounts();
-      calc();
+      if (!passkey) {
+        showGate('Passkey required.');
+      } else {
+        const loaded = await loadSavedCounts();
+        if (loaded) calc();
+      }
+
+      async function submitPasskey(){
+        const value = passkeyInput.value.trim();
+        if (!value) { passkeyError.textContent = 'Enter a passkey.'; return; }
+        storePasskey(value);
+        hideGate();
+        const loaded = await loadSavedCounts();
+        if (loaded) {
+          calc();
+        } else {
+          passkeyError.textContent = 'Incorrect passkey. Please try again.';
+          showGate(passkeyError.textContent);
+        }
+      }
+
+      passkeySubmit.addEventListener('click', submitPasskey);
+      passkeyInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') submitPasskey(); });
     })();
   </script>
 </body>

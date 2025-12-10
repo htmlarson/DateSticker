@@ -13,6 +13,23 @@ function jsonResponse(status, body) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
 
+async function ensurePasskey(env) {
+  let stored = await env.KV.get('passkey');
+  if (!stored && env.passkey) {
+    try {
+      await env.KV.put('passkey', env.passkey);
+      stored = env.passkey;
+    } catch (err) {
+      console.error('KV passkey bootstrap failed', err);
+    }
+  }
+  return stored;
+}
+
+function unauthorizedResponse(message = 'Unauthorized') {
+  return jsonResponse(401, { error: message });
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -24,6 +41,16 @@ export async function onRequest(context) {
 
   if (!env.KV) {
     return jsonResponse(500, { error: 'KV binding not configured.' });
+  }
+
+  const expectedPasskey = await ensurePasskey(env);
+  if (!expectedPasskey) {
+    return jsonResponse(500, { error: 'Passkey not configured.' });
+  }
+
+  const providedPasskey = request.headers.get('x-passkey');
+  if (providedPasskey !== expectedPasskey) {
+    return unauthorizedResponse('Passkey required.');
   }
 
   if (request.method === 'GET') {
