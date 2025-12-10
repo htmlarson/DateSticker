@@ -17,18 +17,25 @@ export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const dateKey = url.searchParams.get('date');
+  const storeNumber = url.searchParams.get('store');
 
   if (!dateKey) {
     return jsonResponse(400, { error: 'Missing date query parameter.' });
+  }
+
+  if (!storeNumber || !/^\d{6}$/.test(storeNumber)) {
+    return jsonResponse(400, { error: 'Missing or invalid store query parameter.' });
   }
 
   if (!env.KV) {
     return jsonResponse(500, { error: 'KV binding not configured.' });
   }
 
+  const storageKey = `${storeNumber}-${dateKey}`;
+
   if (request.method === 'GET') {
     try {
-      const stored = await env.KV.get(dateKey, { type: 'json' });
+      const stored = await env.KV.get(storageKey, { type: 'json' });
       return jsonResponse(200, stored || null);
     } catch (err) {
       console.error('KV get failed', err);
@@ -50,7 +57,7 @@ export async function onRequest(context) {
 
     try {
       const updatedAt = new Date().toISOString();
-      await env.KV.put(dateKey, JSON.stringify({
+      await env.KV.put(storageKey, JSON.stringify({
         drawers: payload.drawers,
         safe: payload.safe,
         updatedAt
