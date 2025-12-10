@@ -9,20 +9,21 @@
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--ink);padding:20px}
     h1{margin:0 0 12px;text-align:center}
-    .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-    .colwrap{display:grid;gap:10px;height:100%}
-    .colwrap--safe{grid-column:1/-1;max-width:540px;justify-self:center;width:100%}
+    .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start}
+    .colwrap{display:grid;gap:12px;height:100%;align-self:start}
+    .colwrap--safe{grid-column:1/-1;max-width:560px;justify-self:center;width:100%}
     @media (max-width:900px){.wrap{grid-template-columns:1fr}}
 
-    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0;width:100%}
+    fieldset{border:1px solid var(--line);border-radius:12px;min-width:0;width:100%;background:#0b1220;box-shadow:0 10px 30px rgba(0,0,0,.25)}
     legend{padding:6px 10px;border:1px solid var(--line);border-radius:999px;font-weight:600}
 
     .col{padding:12px}
     /* label | loose | rolls */
-    .row{display:grid;grid-template-columns:1fr 110px 110px;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+    .row{display:grid;grid-template-columns:1fr 120px 120px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}
     .row:last-child{border-bottom:0}
+    .row--safe-heading,.row--safe{grid-template-columns:1fr 120px}
     label{color:#cbd5e1}
-    input[type=number]{width:110px;justify-self:end;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--ink);text-align:right}
+    input[type=number]{width:120px;justify-self:end;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#0f172a;color:var(--ink);text-align:right}
     .hintcell{color:#9ca3af;font-size:.8rem;text-align:center}
 
     .totals-stack{display:grid;gap:8px}
@@ -92,13 +93,13 @@
     <div class="colwrap colwrap--safe">
       <fieldset class="col" aria-labelledby="safe-legend">
         <legend id="safe-legend">Safe</legend>
-        <div class="row">
-          <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
+        <div class="row row--safe-heading">
+          <span></span><div class="hintcell">Rolls</div>
         </div>
-        <div class="row"><label for="safe-q">Quarters</label><input id="safe-q" name="safe-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-q-r" name="safe-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-        <div class="row"><label for="safe-d">Dimes</label><input id="safe-d" name="safe-d" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-d-r" name="safe-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-        <div class="row"><label for="safe-n">Nickels</label><input id="safe-n" name="safe-n" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-n-r" name="safe-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
-        <div class="row"><label for="safe-p">Pennies</label><input id="safe-p" name="safe-p" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><input id="safe-p-r" name="safe-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row row--safe"><label for="safe-q-r">Quarters</label><input id="safe-q-r" name="safe-q-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row row--safe"><label for="safe-d-r">Dimes</label><input id="safe-d-r" name="safe-d-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row row--safe"><label for="safe-n-r">Nickels</label><input id="safe-n-r" name="safe-n-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        <div class="row row--safe"><label for="safe-p-r">Pennies</label><input id="safe-p-r" name="safe-p-r" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
         <div class="row"><label for="safe-clip1">Clips of $1 (=$20)</label><input id="safe-clip1" name="safe-clip1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
         <div class="row"><label for="safe-1">Loose $1</label><input id="safe-1" name="safe-1" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
         <div class="row"><label for="safe-5">Loose $5</label><input id="safe-5" name="safe-5" type="number" min="0" step="1" inputmode="numeric" placeholder="0"><span class="hintcell">—</span></div>
@@ -132,7 +133,7 @@
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
       const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
-      const safeCoinIds = safeCoinKeys.map(k => [`safe-${k}`, `safe-${k}-r`]);
+      const safeCoinRollIds = safeCoinKeys.map(k => `safe-${k}-r`);
       const safeBillIds = safeBillKeys.map(k => [`safe-${k}`, null]);
 
       const fmt = cents => (cents/100).toLocaleString('en-US', {style:'currency',currency:'USD'});
@@ -153,9 +154,9 @@
 
       function readSafeCounts(){
         const coins = {};
-        safeCoinKeys.forEach((k)=>{
-          coins[k] = readInt(document.getElementById(`safe-${k}`));
-          coins[`${k}R`] = readInt(document.getElementById(`safe-${k}-r`));
+        safeCoinKeys.forEach((k, i)=>{
+          coins[k] = 0;
+          coins[`${k}R`] = readInt(document.getElementById(safeCoinRollIds[i]));
         });
         const bills = {};
         safeBillKeys.forEach((k)=>{
@@ -180,14 +181,10 @@
 
       function applySafeCounts(counts){
         if (!counts) return;
-        safeCoinKeys.forEach((k)=>{
-          const loose = counts.coins?.[k];
+        safeCoinKeys.forEach((k, i)=>{
           const rolls = counts.coins?.[`${k}R`];
-          if (typeof loose === 'number') {
-            document.getElementById(`safe-${k}`).value = loose;
-          }
           if (typeof rolls === 'number') {
-            document.getElementById(`safe-${k}-r`).value = rolls;
+            document.getElementById(safeCoinRollIds[i]).value = rolls;
           }
         });
         safeBillKeys.forEach((k)=>{
@@ -210,10 +207,9 @@
         });
 
         let safeTotalC = 0;
-        safeCoinIds.forEach(([looseId, rollId], i)=>{
-          const loose = readInt(document.getElementById(looseId));
+        safeCoinRollIds.forEach((rollId, i)=>{
           const rolls = readInt(document.getElementById(rollId));
-          safeTotalC += loose * valuesC[i] + rolls * rollC[i];
+          safeTotalC += rolls * rollC[i];
         });
         safeBillKeys.forEach((k)=>{
           const count = readInt(document.getElementById(`safe-${k}`));
@@ -259,7 +255,7 @@
       // Wire inputs
       const allInputIds = [
         ...idsByDrawer.flat().flat(),
-        ...safeCoinIds.flat(),
+        ...safeCoinRollIds,
         ...safeBillIds.flat().filter(Boolean)
       ];
 
