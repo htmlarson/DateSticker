@@ -59,10 +59,10 @@
   <body>
   <div class="gate gate--hidden" id="passkey-gate" aria-labelledby="gate-heading" role="dialog" aria-modal="true">
     <div class="gate__card">
-      <h2 id="gate-heading">Enter passkey</h2>
-      <p class="gate__hint">A passkey is required to view and update counts.</p>
-      <input type="password" id="passkey-input" placeholder="Passkey" autocomplete="current-password" />
-      <button type="button" id="passkey-submit">Unlock</button>
+      <h2 id="gate-heading">Secure with a passkey</h2>
+      <p class="gate__hint" id="gate-hint">Register a passkey (WebAuthn) to unlock and edit counts.</p>
+      <button type="button" id="register-passkey">Create passkey</button>
+      <button type="button" id="signin-passkey" style="margin-top:8px">Sign in with passkey</button>
       <p class="gate__error" id="passkey-error" role="alert"></p>
     </div>
   </div>
@@ -152,12 +152,28 @@
     (async function(){
       const $ = (sel, el=document) => el.querySelector(sel);
 
-      const PASSKEY_STORAGE_KEY = 'count-passkey';
+      const SESSION_STORAGE_KEY = 'count-passkey-session';
       const gateEl = $('#passkey-gate');
-      const passkeyInput = $('#passkey-input');
       const passkeyError = $('#passkey-error');
-      const passkeySubmit = $('#passkey-submit');
-      let passkey = localStorage.getItem(PASSKEY_STORAGE_KEY) || '';
+      const registerBtn = $('#register-passkey');
+      const signinBtn = $('#signin-passkey');
+      let sessionToken = localStorage.getItem(SESSION_STORAGE_KEY) || '';
+
+      const toBase64Url = (buf) => {
+        const bytes = new Uint8Array(buf);
+        let bin = '';
+        bytes.forEach(b => { bin += String.fromCharCode(b); });
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      };
+
+      const fromBase64Url = (value) => {
+        const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = normalized.length % 4 ? '='.repeat(4 - (normalized.length % 4)) : '';
+        const bin = atob(normalized + pad);
+        const bytes = new Uint8Array(bin.length);
+        for (let i=0;i<bin.length;i++){ bytes[i] = bin.charCodeAt(i); }
+        return bytes.buffer;
+      };
 
       // Denomination cents and roll values in cents to avoid float errors
       const keys = ['q','d','n','p'];
@@ -180,19 +196,18 @@
 
       const fmt = cents => (cents/100).toLocaleString('en-US', {style:'currency',currency:'USD'});
 
-      function storePasskey(value){
-        passkey = (value || '').trim();
-        if (passkey) {
-          localStorage.setItem(PASSKEY_STORAGE_KEY, passkey);
+      function storeSession(value){
+        sessionToken = (value || '').trim();
+        if (sessionToken) {
+          localStorage.setItem(SESSION_STORAGE_KEY, sessionToken);
         } else {
-          localStorage.removeItem(PASSKEY_STORAGE_KEY);
+          localStorage.removeItem(SESSION_STORAGE_KEY);
         }
       }
 
       function showGate(message=''){
         passkeyError.textContent = message;
         gateEl.classList.remove('gate--hidden');
-        setTimeout(()=> passkeyInput.focus(), 50);
       }
 
       function hideGate(){
@@ -201,16 +216,120 @@
       }
 
       function handleUnauthorized(message='Passkey required.'){
-        storePasskey('');
+        storeSession('');
         showGate(message);
+      }
+
+      async function getJson(url, options={}){
+        const res = await fetch(url, { ...options, headers: { 'content-type': 'application/json', ...(options.headers||{}) }});
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      }
+
+      function decodeCreationOptions(options){
+        return {
+          ...options,
+          challenge: fromBase64Url(options.challenge),
+          user: {
+            ...options.user,
+            id: new TextEncoder().encode(options.user.id)
+          }
+        };
+      }
+
+      function decodeRequestOptions(options){
+        return {
+          ...options,
+          challenge: fromBase64Url(options.challenge),
+          allowCredentials: (options.allowCredentials || []).map((cred)=>({
+            ...cred,
+            id: fromBase64Url(cred.id)
+          }))
+        };
+      }
+
+      function serializeAttestation(credential){
+        return {
+          id: credential.id,
+          rawId: toBase64Url(credential.rawId),
+          type: credential.type,
+          response: {
+            attestationObject: toBase64Url(credential.response.attestationObject),
+            clientDataJSON: toBase64Url(credential.response.clientDataJSON)
+          }
+        };
+      }
+
+      function serializeAssertion(credential){
+        return {
+          id: credential.id,
+          rawId: toBase64Url(credential.rawId),
+          type: credential.type,
+          response: {
+            authenticatorData: toBase64Url(credential.response.authenticatorData),
+            clientDataJSON: toBase64Url(credential.response.clientDataJSON),
+            signature: toBase64Url(credential.response.signature),
+            userHandle: credential.response.userHandle ? toBase64Url(credential.response.userHandle) : null
+          }
+        };
+      }
+
+      async function registerPasskey(){
+        try {
+          const options = await getJson('/api/passkey-register-start');
+          const publicKey = decodeCreationOptions(options);
+          const credential = await navigator.credentials.create({ publicKey });
+          const att = serializeAttestation(credential);
+          const res = await fetch('/api/passkey-register-verify', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(att)
+          });
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error || 'Registration failed');
+          storeSession(payload.token);
+          hideGate();
+          const loaded = await loadSavedCounts();
+          if (loaded) calc();
+          toast('Passkey registered.');
+        } catch (err) {
+          console.error('Passkey registration failed', err);
+          passkeyError.textContent = err.message || 'Unable to register passkey.';
+          showGate(passkeyError.textContent);
+        }
+      }
+
+      async function authenticatePasskey(){
+        try {
+          const options = await getJson('/api/passkey-auth-start');
+          const publicKey = decodeRequestOptions(options);
+          const assertion = await navigator.credentials.get({ publicKey });
+          const payload = serializeAssertion(assertion);
+          const res = await fetch('/api/passkey-auth-verify', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || 'Authentication failed');
+          storeSession(body.token);
+          hideGate();
+          const loaded = await loadSavedCounts();
+          if (loaded) calc();
+          toast('Signed in with passkey.');
+        } catch (err) {
+          console.error('Passkey authentication failed', err);
+          passkeyError.textContent = err.message || 'Unable to sign in with passkey.';
+          showGate(passkeyError.textContent);
+        }
       }
 
       async function authorizedFetch(url, options={}){
         const headers = { ...(options.headers || {}) };
-        if (passkey) headers['x-passkey'] = passkey;
+        if (sessionToken) headers['authorization'] = `Bearer ${sessionToken}`;
         const res = await fetch(url, { ...options, headers });
         if (res.status === 401) {
-          handleUnauthorized('Invalid or missing passkey.');
+          handleUnauthorized('Passkey session required.');
           throw new Error('unauthorized');
         }
         return res;
@@ -318,7 +437,7 @@
 
       let saveTimer;
       async function saveCounts(){
-        if (!passkey) return;
+        if (!sessionToken) return;
         const drawersPayload = {};
         drawers.forEach((d)=>{ drawersPayload[d] = readDrawerCounts(d); });
         const safePayload = readSafeCounts();
@@ -434,7 +553,7 @@
 
       async function loadSavedCounts(){
         try {
-          if (!passkey) { throw new Error('unauthorized'); }
+          if (!sessionToken) { throw new Error('unauthorized'); }
           const res = await authorizedFetch(`/api/count?date=${encodeURIComponent(dateKey)}`);
           if (res.ok) {
             const payload = await res.json();
@@ -455,29 +574,15 @@
       }
 
       // initial render
-      if (!passkey) {
+      if (!sessionToken) {
         showGate('Passkey required.');
       } else {
         const loaded = await loadSavedCounts();
         if (loaded) calc();
       }
 
-      async function submitPasskey(){
-        const value = passkeyInput.value.trim();
-        if (!value) { passkeyError.textContent = 'Enter a passkey.'; return; }
-        storePasskey(value);
-        hideGate();
-        const loaded = await loadSavedCounts();
-        if (loaded) {
-          calc();
-        } else {
-          passkeyError.textContent = 'Incorrect passkey. Please try again.';
-          showGate(passkeyError.textContent);
-        }
-      }
-
-      passkeySubmit.addEventListener('click', submitPasskey);
-      passkeyInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') submitPasskey(); });
+      registerBtn.addEventListener('click', registerPasskey);
+      signinBtn.addEventListener('click', authenticatePasskey);
     })();
   </script>
 </body>

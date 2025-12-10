@@ -13,21 +13,18 @@ function jsonResponse(status, body) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
 
-async function ensurePasskey(env) {
-  let stored = await env.KV.get('passkey');
-  if (!stored && env.passkey) {
-    try {
-      await env.KV.put('passkey', env.passkey);
-      stored = env.passkey;
-    } catch (err) {
-      console.error('KV passkey bootstrap failed', err);
-    }
-  }
-  return stored;
-}
-
 function unauthorizedResponse(message = 'Unauthorized') {
   return jsonResponse(401, { error: message });
+}
+
+async function validateSession(request, env) {
+  const authHeader = request.headers.get('authorization') || '';
+  const match = authHeader.match(/^Bearer\s+(.+)/i);
+  if (!match) return null;
+  const token = match[1].trim();
+  if (!token) return null;
+  const sessionValue = await env.KV.get(`passkey:session:${token}`);
+  return sessionValue ? token : null;
 }
 
 export async function onRequest(context) {
@@ -43,14 +40,9 @@ export async function onRequest(context) {
     return jsonResponse(500, { error: 'KV binding not configured.' });
   }
 
-  const expectedPasskey = await ensurePasskey(env);
-  if (!expectedPasskey) {
-    return jsonResponse(500, { error: 'Passkey not configured.' });
-  }
-
-  const providedPasskey = request.headers.get('x-passkey');
-  if (providedPasskey !== expectedPasskey) {
-    return unauthorizedResponse('Passkey required.');
+  const sessionToken = await validateSession(request, env);
+  if (!sessionToken) {
+    return unauthorizedResponse('Passkey session required.');
   }
 
   if (request.method === 'GET') {
