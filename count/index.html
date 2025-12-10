@@ -37,6 +37,7 @@
 </head>
 <body>
   <h1>Change Count</h1>
+  <p style="text-align:center;color:#9ca3af;margin-top:4px;margin-bottom:18px;">Saved with key: <strong id="date-key"></strong></p>
   <div class="wrap">
     <!-- Drawer 3 (left) -->
     <fieldset class="col" aria-labelledby="d3-legend">
@@ -87,7 +88,7 @@
   </section>
 
   <script>
-    (function(){
+    (async function(){
       const $ = (sel, el=document) => el.querySelector(sel);
 
       // Denomination cents and roll values in cents to avoid float errors
@@ -95,6 +96,9 @@
       const valuesC = [25,10,5,1];
       const rollC   = [1000,500,200,50]; // quarters,dimes,nickels,pennies
       const drawers = [3,2,1];
+
+      const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      $('#date-key').textContent = dateKey;
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
       const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
@@ -104,6 +108,29 @@
       function readInt(el){
         const v = parseInt(el.value, 10);
         return isNaN(v) || v < 0 ? 0 : v;
+      }
+
+      function readDrawerCounts(drawerNum){
+        const counts = {};
+        keys.forEach((k)=>{
+          counts[k] = readInt(document.getElementById(`d${drawerNum}-${k}`));
+          counts[`${k}R`] = readInt(document.getElementById(`d${drawerNum}-${k}-r`));
+        });
+        return counts;
+      }
+
+      function applyDrawerCounts(drawerNum, counts){
+        if (!counts) return;
+        keys.forEach((k)=>{
+          const loose = counts[k];
+          const rolls = counts[`${k}R`];
+          if (typeof loose === 'number') {
+            document.getElementById(`d${drawerNum}-${k}`).value = loose;
+          }
+          if (typeof rolls === 'number') {
+            document.getElementById(`d${drawerNum}-${k}-r`).value = rolls;
+          }
+        });
       }
 
       function calc(){
@@ -126,10 +153,31 @@
       function selectOnFocus(e){ e.target.select(); }
       function keepSelection(e){ e.preventDefault(); }
 
+      let saveTimer;
+      async function saveCounts(){
+        const drawersPayload = {};
+        drawers.forEach((d)=>{ drawersPayload[d] = readDrawerCounts(d); });
+        try {
+          await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drawers: drawersPayload })
+          });
+        } catch (err) {
+          console.error('Save failed', err);
+          toast('Unable to save right now.');
+        }
+      }
+
+      function queueSave(){
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveCounts, 400);
+      }
+
       // Wire inputs
       idsByDrawer.flat().flat().forEach(id => {
         const el = document.getElementById(id);
-        el.addEventListener('input', calc);
+        el.addEventListener('input', () => { calc(); queueSave(); });
         el.addEventListener('focus', selectOnFocus);
         el.addEventListener('mouseup', keepSelection);
       });
@@ -166,6 +214,7 @@
             }
           }
           calc();
+          queueSave();
           toast('Balanced to whole dollars.');
         });
       });
@@ -196,7 +245,25 @@
         console.groupEnd();
       })();
 
+      async function loadSavedCounts(){
+        try {
+          const res = await fetch(`/api/count?date=${encodeURIComponent(dateKey)}`);
+          if (res.ok) {
+            const payload = await res.json();
+            if (payload && payload.drawers) {
+              drawers.forEach((d)=> applyDrawerCounts(d, payload.drawers[d]));
+            }
+          } else {
+            console.warn('Load failed', res.status);
+          }
+        } catch (err) {
+          console.error('Load failed', err);
+          toast('Unable to load saved counts.');
+        }
+      }
+
       // initial render
+      await loadSavedCounts();
       calc();
     })();
   </script>
