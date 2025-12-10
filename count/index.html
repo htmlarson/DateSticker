@@ -10,6 +10,10 @@
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.04),rgba(255,255,255,0)),var(--bg);color:var(--ink);padding:24px}
     .page{max-width:1200px;margin:0 auto}
     h1{margin:0 0 10px;text-align:center;letter-spacing:.01em}
+    .date-row{display:flex;justify-content:center;align-items:center;gap:10px;color:#9ca3af;margin:6px 0 18px;font-weight:600}
+    .date-row label{text-transform:uppercase;letter-spacing:.05em;font-size:.85rem}
+    .date-row input[type=date]{background:rgba(255,255,255,.04);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700;letter-spacing:.02em}
+    .date-row input[type=date]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
     .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start;margin-top:10px}
     .colwrap{display:grid;gap:12px;height:100%;align-self:start;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.32)}
     .colwrap--safe{grid-column:1/-1;max-width:720px;justify-self:center;width:100%;padding:0;background:none;border:0;box-shadow:none}
@@ -41,10 +45,13 @@
     .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;border:1px solid var(--line);padding:8px 10px;border-radius:999px;color:#e5e7eb;z-index:100}
   </style>
 </head>
-<body>
+  <body>
   <div class="page">
     <h1>Change Count</h1>
-    <p style="text-align:center;color:#9ca3af;margin-top:4px;margin-bottom:18px;">Saved with key: <strong id="date-key"></strong></p>
+    <div class="date-row">
+      <label for="date-picker">For</label>
+      <input type="date" id="date-picker" />
+    </div>
     <div class="wrap">
       <!-- Drawer 1 -->
       <div class="colwrap">
@@ -134,8 +141,10 @@
       const safeBillValuesC = { clip1: 2000, '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
       const drawers = [1,2,3];
 
-      const dateKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      $('#date-key').textContent = dateKey;
+      const datePicker = document.getElementById('date-picker');
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      datePicker.value = today;
+      let dateKey = datePicker.value || today;
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
       const idsByDrawer = drawers.map(d => keys.map(k => [`d${d}-${k}`, `d${d}-${k}-r`]));
@@ -143,6 +152,11 @@
       const safeBillIds = safeBillKeys.map(k => [`safe-${k}`, null]);
 
       const fmt = cents => (cents/100).toLocaleString('en-US', {style:'currency',currency:'USD'});
+
+      function updateDateKey(newDate){
+        dateKey = newDate || today;
+        datePicker.value = dateKey;
+      }
 
       function readInt(el){
         const v = parseInt(el.value, 10);
@@ -268,11 +282,26 @@
         ...safeBillIds.flat().filter(Boolean)
       ];
 
+      function clearAllInputs(){
+        allInputIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+
       allInputIds.forEach(id => {
         const el = document.getElementById(id);
         el.addEventListener('input', () => { calc(); queueSave(); });
         el.addEventListener('focus', selectOnFocus);
         el.addEventListener('mouseup', keepSelection);
+      });
+
+      datePicker.addEventListener('change', async () => {
+        clearTimeout(saveTimer);
+        updateDateKey(datePicker.value);
+        clearAllInputs();
+        await loadSavedCounts();
+        calc();
       });
 
       // Balance (round down to whole dollars by removing loose coins only)
