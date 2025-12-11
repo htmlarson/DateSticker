@@ -35,7 +35,7 @@
     .pill-row{display:flex;gap:10px;flex-wrap:wrap}
     .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:.82rem}
     .footer-note{color:var(--muted);font-size:.9rem;text-align:center}
-    .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;max-height:720px;overflow-y:auto;padding-right:2px}
+    .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding-right:2px}
     .chart-card{border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.02));box-shadow:0 10px 26px rgba(0,0,0,.25);display:grid;gap:10px;grid-template-rows:auto auto 1fr}
     .chart-card__top{display:flex;align-items:center;justify-content:space-between;gap:10px}
     .chart-label{display:flex;align-items:center;gap:8px;font-weight:800;color:#e5e7eb}
@@ -44,11 +44,14 @@
     .chart-chip{padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);font-weight:800;font-size:.85rem;display:flex;align-items:center;gap:6px}
     .chart-chip[data-trend="down"]{color:#fca5a5}
     .chart-chip[data-trend="up"]{color:#bef264}
+    .chart-chip[data-trend="none"]{color:var(--muted)}
     .chart-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;color:var(--muted);font-weight:700}
     .chart-meta__item{display:grid;gap:4px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
     .chart-meta__item strong{color:#e5e7eb;font-size:1.05rem}
     .chart-meta__item span{font-size:.85rem;letter-spacing:.01em}
     .chart-graph{width:100%;border:1px dashed var(--line);border-radius:12px;padding:4px;background:rgba(0,0,0,.18)}
+    .chart-section{display:grid;gap:8px}
+    .chart-section__header{margin:0;font-size:1rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -127,7 +130,10 @@
         100: { label: '$100s', color: '#c084fc', unit: 'bills' }
       };
 
-      const denomOrder = ['q','d','n','p','1','5','10','20','50','100'];
+      const denomGroups = {
+        coins: ['q','d','n','p'],
+        bills: ['1','5','10','20','50','100']
+      };
 
       let storeNumber = null;
       let latestResponse = null;
@@ -286,49 +292,68 @@
 
       function renderCharts(totals, averages, timeseries){
         charts.innerHTML = '';
-        const list = document.createElement('div');
-        list.className = 'chart-grid';
-        denomOrder.forEach((denom) => {
-          const meta = denomMeta[denom];
-          const total = totals?.[denom] || { coins: 0, valueC: 0 };
-          const avg = averages?.[denom]?.dailyChangeC || 0;
-          const series = (timeseries || []).map((row) => (row.values?.[denom]?.valueC || 0) / 100);
-          if (series.length === 0) series.push(0);
-          const card = document.createElement('div');
-          card.className = 'chart-card';
+        const seriesCount = (timeseries || []).length;
+        const hasTrend = seriesCount > 1;
 
-          const top = document.createElement('div');
-          top.className = 'chart-card__top';
-          const label = document.createElement('div');
-          label.className = 'chart-label';
-          label.innerHTML = `<span class="chart-dot" style="background:${meta.color}"></span><span>${meta.label}</span><span class="chart-pill">${meta.unit}</span>`;
-          const chip = document.createElement('div');
-          const trend = avg >= 0 ? 'Accrual' : 'Burn';
-          chip.className = 'chart-chip';
-          chip.dataset.trend = avg >= 0 ? 'up' : 'down';
-          chip.textContent = trend;
-          top.appendChild(label);
-          top.appendChild(chip);
+        const buildSection = (title, denomOrder) => {
+          const section = document.createElement('div');
+          section.className = 'chart-section';
+          const heading = document.createElement('h3');
+          heading.className = 'chart-section__header';
+          heading.textContent = title;
+          section.appendChild(heading);
 
-          const metaGrid = document.createElement('div');
-          metaGrid.className = 'chart-meta';
-          metaGrid.innerHTML = `
-            <div class="chart-meta__item"><span>Total value</span><strong>${fmtUsd(total.valueC)}</strong></div>
-            <div class="chart-meta__item"><span>Total ${meta.unit}</span><strong>${fmtInt(total.coins)}</strong></div>
-            <div class="chart-meta__item"><span>Avg/day</span><strong>${fmtUsd(avg)}</strong></div>
-            <div class="chart-meta__item"><span>Latest</span><strong>${fmtUsd(series[series.length - 1] * 100)}</strong></div>
-          `;
+          const list = document.createElement('div');
+          list.className = 'chart-grid';
 
-          const sparkHost = document.createElement('div');
-          sparkHost.className = 'chart-graph';
-          renderSparkline(sparkHost, series, meta.color);
+          denomOrder.forEach((denom) => {
+            const meta = denomMeta[denom];
+            const total = totals?.[denom] || { coins: 0, valueC: 0 };
+            const avg = averages?.[denom]?.dailyChangeC || 0;
+            const series = (timeseries || []).map((row) => (row.values?.[denom]?.valueC || 0) / 100);
+            if (series.length === 0) series.push(0);
+            const card = document.createElement('div');
+            card.className = 'chart-card';
 
-          card.appendChild(top);
-          card.appendChild(metaGrid);
-          card.appendChild(sparkHost);
-          list.appendChild(card);
-        });
-        charts.appendChild(list);
+            const top = document.createElement('div');
+            top.className = 'chart-card__top';
+            const label = document.createElement('div');
+            label.className = 'chart-label';
+            label.innerHTML = `<span class="chart-dot" style="background:${meta.color}"></span><span>${meta.label}</span><span class="chart-pill">${meta.unit}</span>`;
+            const chip = document.createElement('div');
+            const trendText = hasTrend ? (avg >= 0 ? 'Accrual' : 'Burn') : 'No trend yet';
+            const trendDir = hasTrend ? (avg >= 0 ? 'up' : 'down') : 'none';
+            chip.className = 'chart-chip';
+            chip.dataset.trend = trendDir;
+            chip.textContent = trendText;
+            top.appendChild(label);
+            top.appendChild(chip);
+
+            const metaGrid = document.createElement('div');
+            metaGrid.className = 'chart-meta';
+            metaGrid.innerHTML = `
+              <div class="chart-meta__item"><span>Total value</span><strong>${fmtUsd(total.valueC)}</strong></div>
+              <div class="chart-meta__item"><span>Total ${meta.unit}</span><strong>${fmtInt(total.coins)}</strong></div>
+              <div class="chart-meta__item"><span>Avg/day</span><strong>${hasTrend ? fmtUsd(avg) : '—'}</strong></div>
+              <div class="chart-meta__item"><span>Latest</span><strong>${fmtUsd(series[series.length - 1] * 100)}</strong></div>
+            `;
+
+            const sparkHost = document.createElement('div');
+            sparkHost.className = 'chart-graph';
+            renderSparkline(sparkHost, series, meta.color);
+
+            card.appendChild(top);
+            card.appendChild(metaGrid);
+            card.appendChild(sparkHost);
+            list.appendChild(card);
+          });
+
+          section.appendChild(list);
+          charts.appendChild(section);
+        };
+
+        buildSection('Coins', denomGroups.coins);
+        buildSection('Bills', denomGroups.bills);
       }
 
       async function loadStats(){
