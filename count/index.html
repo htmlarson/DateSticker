@@ -210,7 +210,7 @@
       const safeBillKeys = ['clip1','1','5','10','20','50','100'];
       const safeBillValuesC = { clip1: 2000, '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
       const drawers = [1,2,3];
-      const drawerPathSuffixes = { 1: 'FS01', 2: 'WS01', 3: 'WS03' };
+      const drawerPathSuffixes = { 1: 'FS01', 2: 'WS01', 3: 'WS02' };
 
       const datePicker = document.getElementById('date-picker');
       const lastEditedEl = document.getElementById('last-edited');
@@ -570,7 +570,7 @@
         const suffix = drawerPathSuffixes[drawerNum];
         if (!suffix) { toast('Unknown drawer.'); return; }
 
-        const drawerPath = `\\${storeNumber}${suffix}`;
+        const drawerPath = `\\${storeNumber}${suffix}\\DRW${suffix}`;
         const url = `https://localhost:9732/PaymentTerminalService/PopCashDrawer?drawerPath=${encodeURIComponent(drawerPath)}`;
         const label = btn.textContent;
         btn.disabled = true;
