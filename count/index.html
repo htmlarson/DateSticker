@@ -570,7 +570,7 @@
         const suffix = drawerPathSuffixes[drawerNum];
         if (!suffix) { toast('Unknown drawer.'); return; }
 
-        const drawerPath = `\\${storeNumber}${suffix}\\DRW${suffix}`;
+        const drawerPath = `\\\\${storeNumber}${suffix}\\DRW${suffix}`;
         const url = `https://localhost:9732/PaymentTerminalService/PopCashDrawer?drawerPath=${encodeURIComponent(drawerPath)}`;
         const label = btn.textContent;
         btn.disabled = true;
