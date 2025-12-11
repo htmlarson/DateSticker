@@ -169,7 +169,11 @@ export async function onRequest(context) {
       });
 
       if (statements.length) {
-        await env.db.batch(statements);
+        const MAX_BATCH = 50;
+        for (let i = 0; i < statements.length; i += MAX_BATCH) {
+          const chunk = statements.slice(i, i + MAX_BATCH);
+          await env.db.batch(chunk);
+        }
       }
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
