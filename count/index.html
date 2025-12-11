@@ -61,7 +61,7 @@
     .label{display:block;color:var(--muted);font-size:0.85rem;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
     .value{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.05rem}
 
-    .controls{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:-4px -4px 10px 0}
+    .controls{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin:-4px -4px 10px 0;flex-wrap:wrap}
     button{background:linear-gradient(180deg,#111a2c,#0d1423);border:1px solid var(--line);color:var(--ink);padding:7px 12px;border-radius:10px;font-weight:700;cursor:pointer;letter-spacing:.01em;transition:transform .08s ease,filter .15s ease}
     button:hover{filter:brightness(1.1)}
     button:active{transform:translateY(1px)}
@@ -104,7 +104,7 @@
       <div class="colwrap">
         <fieldset class="col drawer" aria-labelledby="d1-legend">
           <legend id="d1-legend">Drawer 1</legend>
-          <div class="controls"><button type="button" data-balance="1">Balance</button></div>
+          <div class="controls"><button type="button" data-balance="1">Balance</button><button type="button" data-pop="1">Pop drawer</button></div>
           <div class="row">
             <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
           </div>
@@ -127,7 +127,7 @@
       <div class="colwrap">
         <fieldset class="col drawer" aria-labelledby="d2-legend">
           <legend id="d2-legend">Drawer 2</legend>
-          <div class="controls"><button type="button" data-balance="2">Balance</button></div>
+          <div class="controls"><button type="button" data-balance="2">Balance</button><button type="button" data-pop="2">Pop drawer</button></div>
           <div class="row">
             <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
           </div>
@@ -150,7 +150,7 @@
       <div class="colwrap">
         <fieldset class="col drawer" aria-labelledby="d3-legend">
           <legend id="d3-legend">Drawer 3</legend>
-          <div class="controls"><button type="button" data-balance="3">Balance</button></div>
+          <div class="controls"><button type="button" data-balance="3">Balance</button><button type="button" data-pop="3">Pop drawer</button></div>
           <div class="row">
             <span></span><div class="hintcell">Loose</div><div class="hintcell">Rolls</div>
           </div>
@@ -210,6 +210,7 @@
       const safeBillKeys = ['clip1','1','5','10','20','50','100'];
       const safeBillValuesC = { clip1: 2000, '1': 100, '5': 500, '10': 1000, '20': 2000, '50': 5000, '100': 10000 };
       const drawers = [1,2,3];
+      const drawerPathSuffixes = { 1: 'FS01', 2: 'WS01', 3: 'WS02' };
 
       const datePicker = document.getElementById('date-picker');
       const lastEditedEl = document.getElementById('last-edited');
@@ -247,6 +248,15 @@
       const storeStatus = document.getElementById('store-status');
       const storeOverlay = document.getElementById('store-overlay');
       const storeError = document.getElementById('store-error');
+
+      function ensureStoreForAction(){
+        if (storeNumber) return true;
+        storeEditing = true;
+        renderStore();
+        storeError.textContent = 'Enter a store number first.';
+        storeInput.focus();
+        return false;
+      }
 
       function updateDateKey(newDate){
         dateKey = newDate || today;
@@ -552,6 +562,39 @@
           calc();
           queueSave();
           toast('Balanced to whole dollars.');
+        });
+      });
+
+      async function popDrawer(drawerNum, btn){
+        if (!ensureStoreForAction()) return;
+        const suffix = drawerPathSuffixes[drawerNum];
+        if (!suffix) { toast('Unknown drawer.'); return; }
+
+        const drawerPath = `\\\\${storeNumber}${suffix}\\DRW${suffix}`;
+        const url = `https://localhost:9732/PaymentTerminalService/PopCashDrawer?drawerPath=${encodeURIComponent(drawerPath)}`;
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Popping...';
+        try {
+          const res = await fetch(url, { method: 'GET' });
+          if (res.ok) {
+            toast('Drawer popped.');
+          } else {
+            toast('Unable to pop drawer.');
+          }
+        } catch (err) {
+          console.error('Pop drawer failed', err);
+          toast('Unable to pop drawer.');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = label;
+        }
+      }
+
+      document.querySelectorAll('[data-pop]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const drawerNum = parseInt(btn.getAttribute('data-pop'), 10);
+          popDrawer(drawerNum, btn);
         });
       });
 
