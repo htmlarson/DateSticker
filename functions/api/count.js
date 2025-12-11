@@ -1,5 +1,5 @@
 // functions/api/count.js
-// Persists change drawer counts keyed by date using Cloudflare KV.
+// Persists change drawer counts keyed by date using Cloudflare D1 (env.db).
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -27,18 +27,78 @@ export async function onRequest(context) {
     return jsonResponse(400, { error: 'Missing or invalid store query parameter.' });
   }
 
-  if (!env.KV) {
-    return jsonResponse(500, { error: 'KV binding not configured.' });
+  if (!env.db) {
+    return jsonResponse(500, { error: 'Database binding not configured.' });
   }
 
-  const storageKey = `${storeNumber}-${dateKey}`;
+  const coinDenoms = ['q', 'd', 'n', 'p'];
+  const billDenoms = ['1', '5', '10', '20', '50', '100', 'clip1'];
+  const denomValuesC = {
+    q: 25,
+    d: 10,
+    n: 5,
+    p: 1,
+    1: 100,
+    5: 500,
+    10: 1000,
+    20: 2000,
+    50: 5000,
+    100: 10000,
+    clip1: 2000
+  };
 
   if (request.method === 'GET') {
     try {
-      const stored = await env.KV.get(storageKey, { type: 'json' });
-      return jsonResponse(200, stored || null);
+      const snapshot = await env.db
+        .prepare(
+          'SELECT id, updated_at FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?'
+        )
+        .bind(storeNumber, dateKey)
+        .first();
+
+      if (!snapshot) {
+        return jsonResponse(200, null);
+      }
+
+      const lines = await env.db
+        .prepare(
+          'SELECT location, type, denomination, qty, rolled_qty FROM cash_snapshot_lines WHERE snapshot_id = ?'
+        )
+        .bind(snapshot.id)
+        .all();
+
+      const drawers = {};
+      const safe = { coins: {}, bills: {} };
+
+      for (const row of lines.results ?? []) {
+        if (row.location.startsWith('drawer')) {
+          const drawerNum = parseInt(row.location.replace('drawer', ''), 10);
+          if (!drawers[drawerNum]) {
+            drawers[drawerNum] = { coins: {}, bills: {} };
+          }
+          if (row.type === 'coin') {
+            drawers[drawerNum].coins[row.denomination] = row.qty;
+            drawers[drawerNum].coins[`${row.denomination}R`] = row.rolled_qty;
+          } else if (row.type === 'bill') {
+            drawers[drawerNum].bills[row.denomination] = row.qty;
+          }
+        } else if (row.location === 'safe') {
+          if (row.type === 'coin') {
+            safe.coins[row.denomination] = row.qty;
+            safe.coins[`${row.denomination}R`] = row.rolled_qty;
+          } else if (row.type === 'bill') {
+            safe.bills[row.denomination] = row.qty;
+          }
+        }
+      }
+
+      return jsonResponse(200, {
+        drawers,
+        safe,
+        updatedAt: snapshot.updated_at
+      });
     } catch (err) {
-      console.error('KV get failed', err);
+      console.error('D1 read failed', err);
       return jsonResponse(500, { error: 'Unable to read saved counts.' });
     }
   }
@@ -57,14 +117,82 @@ export async function onRequest(context) {
 
     try {
       const updatedAt = new Date().toISOString();
-      await env.KV.put(storageKey, JSON.stringify({
-        drawers: payload.drawers,
-        safe: payload.safe,
-        updatedAt
-      }));
+      const existing = await env.db
+        .prepare('SELECT id FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?')
+        .bind(storeNumber, dateKey)
+        .first();
+
+      let snapshotId;
+      if (existing?.id) {
+        snapshotId = existing.id;
+        await env.db
+          .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
+          .bind(updatedAt, snapshotId)
+          .run();
+        await env.db
+          .prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?')
+          .bind(snapshotId)
+          .run();
+      } else {
+        const insertResult = await env.db
+          .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
+          .bind(storeNumber, dateKey, updatedAt)
+          .run();
+        snapshotId = insertResult.meta.last_row_id;
+      }
+
+      const statements = [];
+
+      function addLine(location, type, denomination, qty, rolledQty) {
+        const denomValue = denomValuesC[denomination];
+        statements.push(
+          env.db
+            .prepare(
+              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
+            )
+            .bind(snapshotId, location, type, denomination, qty, rolledQty, denomValue)
+        );
+      }
+
+      for (const drawerKey of Object.keys(payload.drawers)) {
+        const drawer = payload.drawers[drawerKey] || {};
+        const coins = drawer.coins || drawer;
+        const bills = drawer.bills || drawer;
+        const location = `drawer${drawerKey}`;
+
+        coinDenoms.forEach((k) => {
+          const qty = typeof coins[k] === 'number' ? coins[k] : 0;
+          const rolled = typeof coins[`${k}R`] === 'number' ? coins[`${k}R`] : 0;
+          addLine(location, 'coin', k, qty, rolled);
+        });
+
+        billDenoms.forEach((k) => {
+          const qty = typeof bills[k] === 'number' ? bills[k] : 0;
+          addLine(location, 'bill', k, qty, 0);
+        });
+      }
+
+      const safeCoins = payload.safe?.coins || {};
+      const safeBills = payload.safe?.bills || {};
+
+      coinDenoms.forEach((k) => {
+        const qty = typeof safeCoins[k] === 'number' ? safeCoins[k] : 0;
+        const rolled = typeof safeCoins[`${k}R`] === 'number' ? safeCoins[`${k}R`] : 0;
+        addLine('safe', 'coin', k, qty, rolled);
+      });
+
+      billDenoms.forEach((k) => {
+        const qty = typeof safeBills[k] === 'number' ? safeBills[k] : 0;
+        addLine('safe', 'bill', k, qty, 0);
+      });
+
+      if (statements.length > 0) {
+        await env.db.batch(statements);
+      }
+
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
-      console.error('KV put failed', err);
+      console.error('D1 write failed', err);
       return jsonResponse(500, { error: 'Unable to save counts.' });
     }
   }
