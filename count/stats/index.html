@@ -23,10 +23,6 @@
     button:active{transform:translateY(1px)}
     select{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700}
     select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(96,165,250,.25)}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-    .stat-title{display:flex;justify-content:space-between;align-items:center;font-weight:700;color:#e5e7eb;margin-bottom:6px}
-    .big-number{font-variant-numeric:tabular-nums;font-size:1.6rem;font-weight:900}
-    .value-line{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-weight:700;margin-top:6px}
     .spark{width:100%;height:70px;margin-top:8px}
     .store-overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.68);backdrop-filter:blur(4px);z-index:200;transition:opacity .25s ease,visibility .25s ease}
     .store-overlay[hidden]{opacity:0;visibility:hidden}
@@ -38,14 +34,14 @@
     .store__error{color:#f87171;font-weight:700;font-size:.9rem;min-height:1.1em}
     .pill-row{display:flex;gap:10px;flex-wrap:wrap}
     .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:.82rem}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
-    .delta-positive{color:var(--green)}
-    .delta-negative{color:#f87171}
     .footer-note{color:var(--muted);font-size:.9rem;text-align:center}
-    .chart-list{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto;padding-right:2px}
-    .chart-row{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.03);box-shadow:0 6px 16px rgba(0,0,0,.18)}
-    .chart-label{display:flex;flex-direction:column;gap:4px;font-weight:800;color:#e5e7eb}
+    .chart-list{display:flex;flex-direction:column;gap:10px;max-height:720px;overflow-y:auto;padding-right:2px}
+    .chart-row{display:grid;grid-template-columns:220px 1fr;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(255,255,255,.03);box-shadow:0 6px 16px rgba(0,0,0,.18)}
+    .chart-label{display:flex;flex-direction:column;gap:6px;font-weight:800;color:#e5e7eb}
     .chart-pill{display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#111827;color:var(--muted);font-weight:700;font-size:.82rem}
+    .chart-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;color:var(--muted);font-weight:700}
+    .chart-meta__item{display:flex;justify-content:space-between;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02)}
+    .chart-meta__item strong{color:#e5e7eb}
     .chart-graph{width:100%}
   </style>
 </head>
@@ -77,18 +73,6 @@
     </div>
 
     <div class="card">
-      <div class="muted">Totals across window</div>
-      <div class="grid" id="totals-grid"></div>
-    </div>
-
-    <div class="summary">
-      <div class="card">
-        <div class="muted">Average daily burn / accrual</div>
-        <div id="delta-list" class="grid"></div>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="muted">Coin trends</div>
       <div id="charts"></div>
     </div>
@@ -112,8 +96,6 @@
     (function(){
       const STORE_STORAGE_KEY = 'change-count-store-number';
       const windowSelect = document.getElementById('window-select');
-      const totalsGrid = document.getElementById('totals-grid');
-      const deltaList = document.getElementById('delta-list');
       const charts = document.getElementById('charts');
       const coverage = document.getElementById('coverage');
       const lastUpdated = document.getElementById('last-updated');
@@ -282,39 +264,6 @@
         }
       }
 
-      function renderTotals(totals){
-        totalsGrid.innerHTML = '';
-        denomOrder.forEach((denom) => {
-          const meta = denomMeta[denom];
-          const t = totals?.[denom] || { coins: 0, valueC: 0 };
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="stat-title"><span>${meta.label}</span><span class="pill">${fmtUsd(t.valueC)}</span></div>
-            <div class="big-number">${fmtInt(t.coins)} ${meta.unit}</div>
-            <div class="value-line"><span>Value</span><span>${fmtUsd(t.valueC)}</span></div>
-          `;
-          totalsGrid.appendChild(card);
-        });
-      }
-
-      function renderDeltas(averages){
-        deltaList.innerHTML = '';
-        denomOrder.forEach((denom) => {
-          const meta = denomMeta[denom];
-          const avg = averages?.[denom]?.dailyChangeC || 0;
-          const cls = avg > 0 ? 'delta-positive' : avg < 0 ? 'delta-negative' : 'muted';
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="stat-title"><span>${meta.label}</span><span class="pill">${avg >= 0 ? 'Accrual' : 'Burn'}</span></div>
-            <div class="big-number ${cls}">${fmtUsd(avg)}</div>
-            <div class="value-line"><span>Avg per day</span><span class="${cls}">${fmtUsd(avg)}</span></div>
-          `;
-          deltaList.appendChild(card);
-        });
-      }
-
       function renderSparkline(el, values, color){
         const width = el.clientWidth || 240;
         const height = 70;
@@ -329,19 +278,32 @@
         el.innerHTML = `<svg class="spark" viewBox="0 0 ${width} ${height}"><polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}" /><circle r="3.5" cx="${width-5}" cy="${height-6 - ((values[values.length-1]-min)/span)*(height-12)}" fill="${color}" /></svg>`;
       }
 
-      function renderCharts(timeseries){
+      function renderCharts(totals, averages, timeseries){
         charts.innerHTML = '';
         const list = document.createElement('div');
         list.className = 'chart-list';
         denomOrder.forEach((denom) => {
           const meta = denomMeta[denom];
-          const series = timeseries.map((row) => row.values[denom].valueC / 100);
+          const total = totals?.[denom] || { coins: 0, valueC: 0 };
+          const avg = averages?.[denom]?.dailyChangeC || 0;
+          const series = (timeseries || []).map((row) => (row.values?.[denom]?.valueC || 0) / 100);
+          if (series.length === 0) series.push(0);
           const row = document.createElement('div');
           row.className = 'chart-row';
 
           const label = document.createElement('div');
           label.className = 'chart-label';
           label.innerHTML = `<span>${meta.label}</span><span class="chart-pill">${meta.unit}</span>`;
+
+          const metaGrid = document.createElement('div');
+          metaGrid.className = 'chart-meta';
+          metaGrid.innerHTML = `
+            <div class="chart-meta__item"><span>Total value</span><strong>${fmtUsd(total.valueC)}</strong></div>
+            <div class="chart-meta__item"><span>Total ${meta.unit}</span><strong>${fmtInt(total.coins)}</strong></div>
+            <div class="chart-meta__item"><span>Avg/day</span><strong>${fmtUsd(avg)}</strong></div>
+            <div class="chart-meta__item"><span>Trend</span><strong>${avg >= 0 ? 'Accrual' : 'Burn'}</strong></div>
+          `;
+          label.appendChild(metaGrid);
 
           const sparkHost = document.createElement('div');
           sparkHost.className = 'chart-graph';
@@ -369,9 +331,7 @@
           latestResponse = payload;
           sanitizeWindowOption(payload.availableDates);
           coverage.textContent = describeCoverage(payload.range, payload.availableDates);
-          renderTotals(payload.totals);
-          renderDeltas(payload.averages);
-          renderCharts(payload.timeseries || []);
+          renderCharts(payload.totals, payload.averages, payload.timeseries || []);
           if (payload.range) {
             lastUpdated.textContent = `Window ${payload.range.start} → ${payload.range.end}`;
           } else {
@@ -381,8 +341,6 @@
           console.error(err);
           coverage.textContent = 'Unable to load stats';
           lastUpdated.textContent = 'Failed to load stats';
-          totalsGrid.innerHTML = '<div class="muted">No data</div>';
-          deltaList.innerHTML = '';
           charts.innerHTML = '';
         }
       }
