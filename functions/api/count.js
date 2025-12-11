@@ -90,7 +90,7 @@ export async function onRequest(context) {
     }
   }
 
-  if (request.method === 'PUT') {
+  if (request.method === 'PUT' || request.method === 'POST') {
     let payload;
     try {
       payload = await request.json();
@@ -198,6 +198,6 @@ export async function onRequest(context) {
 
   return new Response('Method Not Allowed', {
     status: 405,
-    headers: { ...JSON_HEADERS, Allow: 'GET, PUT' }
+    headers: { ...JSON_HEADERS, Allow: 'GET, PUT, POST' }
   });
 }
