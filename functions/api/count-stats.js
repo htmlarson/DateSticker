@@ -31,9 +31,21 @@ function clampDays(raw) {
   return Math.min(parsed, 90);
 }
 
-const coinDenoms = ['q', 'd', 'n', 'p'];
-const denomValueC = { q: 25, d: 10, n: 5, p: 1 };
-const rollValueC = { q: 1000, d: 500, n: 200, p: 50 };
+const denomConfig = {
+  q: { type: 'coin', valueC: 25, rollValueC: 1000 },
+  d: { type: 'coin', valueC: 10, rollValueC: 500 },
+  n: { type: 'coin', valueC: 5, rollValueC: 200 },
+  p: { type: 'coin', valueC: 1, rollValueC: 50 },
+  1: { type: 'bill', valueC: 100 },
+  5: { type: 'bill', valueC: 500 },
+  10: { type: 'bill', valueC: 1000 },
+  20: { type: 'bill', valueC: 2000 },
+  50: { type: 'bill', valueC: 5000 },
+  100: { type: 'bill', valueC: 10000 },
+  clip1: { type: 'bill', valueC: 2000 }
+};
+
+const allDenoms = ['q', 'd', 'n', 'p', '1', '5', '10', '20', '50', '100', 'clip1'];
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -70,12 +82,11 @@ export async function onRequest(context) {
          JOIN cash_snapshot_lines l ON cs.id = l.snapshot_id
          WHERE cs.store_id = ?
            AND cs.snapshot_date BETWEEN ? AND ?
-           AND l.type = 'coin'
-           AND l.denomination IN ('q','d','n','p')
+           AND l.denomination IN (${allDenoms.map(() => '?').join(',')})
          GROUP BY cs.snapshot_date, l.denomination
          ORDER BY cs.snapshot_date`
       )
-      .bind(storeNumber, startDateKey, endDateKey)
+      .bind(storeNumber, startDateKey, endDateKey, ...allDenoms)
       .all();
 
     const byDate = {};
@@ -83,15 +94,18 @@ export async function onRequest(context) {
       const loose = typeof row.loose_qty === 'number' ? row.loose_qty : 0;
       const rolled = typeof row.rolled_qty === 'number' ? row.rolled_qty : 0;
       const denom = row.denomination;
-      const totalC = loose * denomValueC[denom] + rolled * rollValueC[denom];
-      const coinsPerRoll = rollValueC[denom] / denomValueC[denom];
-      const totalCoins = loose + rolled * coinsPerRoll;
+      const cfg = denomConfig[denom];
+
+      const rollValue = cfg.rollValueC || 0;
+      const unitsPerRoll = rollValue && cfg.valueC ? rollValue / cfg.valueC : 0;
+      const totalUnits = loose + rolled * unitsPerRoll;
+      const totalC = loose * cfg.valueC + rolled * rollValue;
 
       if (!byDate[row.snapshot_date]) {
         byDate[row.snapshot_date] = {};
       }
       byDate[row.snapshot_date][denom] = {
-        coins: totalCoins,
+        coins: totalUnits,
         valueC: totalC
       };
     }
@@ -106,14 +120,14 @@ export async function onRequest(context) {
 
     const timeseries = dateRange.map((date) => ({
       date,
-      values: coinDenoms.reduce((acc, denom) => {
+      values: allDenoms.reduce((acc, denom) => {
         const fallback = { coins: 0, valueC: 0 };
         acc[denom] = byDate[date]?.[denom] || fallback;
         return acc;
       }, {})
     }));
 
-    const totals = coinDenoms.reduce((acc, denom) => {
+    const totals = allDenoms.reduce((acc, denom) => {
       let coins = 0;
       let valueC = 0;
       timeseries.forEach((row) => {
@@ -124,7 +138,7 @@ export async function onRequest(context) {
       return acc;
     }, {});
 
-    const averages = coinDenoms.reduce((acc, denom) => {
+    const averages = allDenoms.reduce((acc, denom) => {
       let delta = 0;
       for (let i = 1; i < timeseries.length; i += 1) {
         delta += timeseries[i].values[denom].valueC - timeseries[i - 1].values[denom].valueC;

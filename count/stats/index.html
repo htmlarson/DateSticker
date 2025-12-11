@@ -126,11 +126,20 @@
       const storeSaveBtn = document.getElementById('store-save');
 
       const denomMeta = {
-        q: { label: 'Quarters', color: '#60a5fa' },
-        d: { label: 'Dimes', color: '#a78bfa' },
-        n: { label: 'Nickels', color: '#fbbf24' },
-        p: { label: 'Pennies', color: '#34d399' }
+        q: { label: 'Quarters', color: '#60a5fa', unit: 'coins' },
+        d: { label: 'Dimes', color: '#a78bfa', unit: 'coins' },
+        n: { label: 'Nickels', color: '#fbbf24', unit: 'coins' },
+        p: { label: 'Pennies', color: '#34d399', unit: 'coins' },
+        1: { label: '$1s', color: '#fcd34d', unit: 'bills' },
+        5: { label: '$5s', color: '#fb923c', unit: 'bills' },
+        10: { label: '$10s', color: '#f87171', unit: 'bills' },
+        20: { label: '$20s', color: '#34d399', unit: 'bills' },
+        50: { label: '$50s', color: '#38bdf8', unit: 'bills' },
+        100: { label: '$100s', color: '#c084fc', unit: 'bills' },
+        clip1: { label: 'Clips ($20)', color: '#e5e7eb', unit: 'clips' }
       };
+
+      const denomOrder = ['q','d','n','p','1','5','10','20','50','100','clip1'];
 
       let storeNumber = null;
       let latestResponse = null;
@@ -235,14 +244,14 @@
 
       function renderTotals(totals){
         totalsGrid.innerHTML = '';
-        ['q','d','n','p'].forEach((denom) => {
+        denomOrder.forEach((denom) => {
           const meta = denomMeta[denom];
           const t = totals?.[denom] || { coins: 0, valueC: 0 };
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `
             <div class="stat-title"><span>${meta.label}</span><span class="pill">${fmtUsd(t.valueC)}</span></div>
-            <div class="big-number">${fmtInt(t.coins)} coins</div>
+            <div class="big-number">${fmtInt(t.coins)} ${meta.unit}</div>
             <div class="value-line"><span>Value</span><span>${fmtUsd(t.valueC)}</span></div>
           `;
           totalsGrid.appendChild(card);
@@ -251,7 +260,7 @@
 
       function renderDeltas(averages){
         deltaList.innerHTML = '';
-        ['q','d','n','p'].forEach((denom) => {
+        denomOrder.forEach((denom) => {
           const meta = denomMeta[denom];
           const avg = averages?.[denom]?.dailyChangeC || 0;
           const cls = avg > 0 ? 'delta-positive' : avg < 0 ? 'delta-negative' : 'muted';
@@ -282,7 +291,7 @@
 
       function renderCharts(timeseries){
         charts.innerHTML = '';
-        ['q','d','n','p'].forEach((denom) => {
+        denomOrder.forEach((denom) => {
           const meta = denomMeta[denom];
           const series = timeseries.map((row) => row.values[denom].valueC / 100);
           const card = document.createElement('div');
