@@ -129,10 +129,6 @@ export async function onRequest(context) {
         snapshotId = insertResult.meta.last_row_id;
       }
 
-      const insertLineStmt = env.db.prepare(
-        'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
-      );
-
       function asNonNegativeInt(value) {
         return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
       }
@@ -140,9 +136,26 @@ export async function onRequest(context) {
       async function addLine(location, type, denomination, qty, rolledQty) {
         const normalizedQty = asNonNegativeInt(qty);
         const normalizedRolled = asNonNegativeInt(rolledQty);
-        await insertLineStmt
-          .bind(snapshotId, location, type, denomination, normalizedQty, normalizedRolled)
-          .run();
+        try {
+          await env.db
+            .prepare(
+              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
+            )
+            .bind(snapshotId, location, type, denomination, normalizedQty, normalizedRolled)
+            .run();
+        } catch (err) {
+          console.error('Failed to insert snapshot line', {
+            location,
+            type,
+            denomination,
+            normalizedQty,
+            normalizedRolled,
+            snapshotId,
+            message: err?.message,
+            stack: err?.stack
+          });
+          throw err;
+        }
       }
 
       for (const drawerKey of Object.keys(payload.drawers)) {
