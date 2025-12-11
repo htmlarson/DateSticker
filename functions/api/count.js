@@ -112,10 +112,15 @@ export async function onRequest(context) {
       let snapshotId;
       if (existing?.id) {
         snapshotId = existing.id;
-        await env.db.batch([
-          env.db.prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?').bind(updatedAt, snapshotId),
-          env.db.prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?').bind(snapshotId)
-        ]);
+        await env.db
+          .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
+          .bind(updatedAt, snapshotId)
+          .run();
+
+        await env.db
+          .prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?')
+          .bind(snapshotId)
+          .run();
       } else {
         const insertResult = await env.db
           .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
@@ -168,12 +173,8 @@ export async function onRequest(context) {
         addLine('safe', 'bill', k, qty, 0);
       });
 
-      if (statements.length) {
-        const MAX_BATCH = 50;
-        for (let i = 0; i < statements.length; i += MAX_BATCH) {
-          const chunk = statements.slice(i, i + MAX_BATCH);
-          await env.db.batch(chunk);
-        }
+      for (const stmt of statements) {
+        await stmt.run();
       }
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
