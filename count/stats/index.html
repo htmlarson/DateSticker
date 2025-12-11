@@ -23,10 +23,6 @@
     button:active{transform:translateY(1px)}
     select{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700}
     select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(96,165,250,.25)}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-    .stat-title{display:flex;justify-content:space-between;align-items:center;font-weight:700;color:#e5e7eb;margin-bottom:6px}
-    .big-number{font-variant-numeric:tabular-nums;font-size:1.6rem;font-weight:900}
-    .value-line{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-weight:700;margin-top:6px}
     .spark{width:100%;height:70px;margin-top:8px}
     .store-overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.68);backdrop-filter:blur(4px);z-index:200;transition:opacity .25s ease,visibility .25s ease}
     .store-overlay[hidden]{opacity:0;visibility:hidden}
@@ -38,10 +34,24 @@
     .store__error{color:#f87171;font-weight:700;font-size:.9rem;min-height:1.1em}
     .pill-row{display:flex;gap:10px;flex-wrap:wrap}
     .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:.82rem}
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
-    .delta-positive{color:var(--green)}
-    .delta-negative{color:#f87171}
     .footer-note{color:var(--muted);font-size:.9rem;text-align:center}
+    .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding-right:2px}
+    .chart-card{border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.02));box-shadow:0 10px 26px rgba(0,0,0,.25);display:grid;gap:10px;grid-template-rows:auto auto 1fr}
+    .chart-card__top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .chart-label{display:flex;align-items:center;gap:8px;font-weight:800;color:#e5e7eb}
+    .chart-dot{width:12px;height:12px;border-radius:999px;border:1px solid var(--line)}
+    .chart-pill{display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:10px;border:1px solid var(--line);background:#0b1221;color:#cbd5e1;font-weight:700;font-size:.8rem}
+    .chart-chip{padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);font-weight:800;font-size:.85rem;display:flex;align-items:center;gap:6px}
+    .chart-chip[data-trend="down"]{color:#fca5a5}
+    .chart-chip[data-trend="up"]{color:#bef264}
+    .chart-chip[data-trend="none"]{color:var(--muted)}
+    .chart-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;color:var(--muted);font-weight:700}
+    .chart-meta__item{display:grid;gap:4px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+    .chart-meta__item strong{color:#e5e7eb;font-size:1.05rem}
+    .chart-meta__item span{font-size:.85rem;letter-spacing:.01em}
+    .chart-graph{width:100%;border:1px dashed var(--line);border-radius:12px;padding:4px;background:rgba(0,0,0,.18)}
+    .chart-section{display:grid;gap:8px}
+    .chart-section__header{margin:0;font-size:1rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -72,24 +82,8 @@
     </div>
 
     <div class="card">
-      <div class="muted">Totals across window</div>
-      <div class="grid" id="totals-grid"></div>
-    </div>
-
-    <div class="summary">
-      <div class="card">
-        <div class="muted">Average daily burn / accrual</div>
-        <div id="delta-list" class="grid"></div>
-      </div>
-      <div class="card">
-        <div class="muted">Notes</div>
-        <p class="muted">Stats use all saved drawer + safe counts for the selected store. Windows cap at 90 days and only include dates that have snapshots.</p>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="muted">Coin trends</div>
-      <div class="grid" id="charts"></div>
+      <div id="charts"></div>
     </div>
 
     <div class="footer-note" id="last-updated">Waiting for data…</div>
@@ -111,8 +105,6 @@
     (function(){
       const STORE_STORAGE_KEY = 'change-count-store-number';
       const windowSelect = document.getElementById('window-select');
-      const totalsGrid = document.getElementById('totals-grid');
-      const deltaList = document.getElementById('delta-list');
       const charts = document.getElementById('charts');
       const coverage = document.getElementById('coverage');
       const lastUpdated = document.getElementById('last-updated');
@@ -135,17 +127,59 @@
         10: { label: '$10s', color: '#f87171', unit: 'bills' },
         20: { label: '$20s', color: '#34d399', unit: 'bills' },
         50: { label: '$50s', color: '#38bdf8', unit: 'bills' },
-        100: { label: '$100s', color: '#c084fc', unit: 'bills' },
-        clip1: { label: 'Clips ($20)', color: '#e5e7eb', unit: 'clips' }
+        100: { label: '$100s', color: '#c084fc', unit: 'bills' }
       };
 
-      const denomOrder = ['q','d','n','p','1','5','10','20','50','100','clip1'];
+      const denomGroups = {
+        coins: ['q','d','n','p'],
+        bills: ['1','5','10','20','50','100']
+      };
 
       let storeNumber = null;
       let latestResponse = null;
 
       const fmtUsd = (cents) => (cents/100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
       const fmtInt = (val) => Math.round(val).toLocaleString('en-US');
+
+      function mergeClipIntoOnes(totals){
+        if (!totals?.clip1) return totals;
+        const clip = totals.clip1;
+        const ones = totals['1'] || { coins: 0, valueC: 0 };
+        const clipOnesCoins = Math.round((clip.valueC || 0) / 100);
+        totals['1'] = {
+          coins: (ones.coins || 0) + clipOnesCoins,
+          valueC: (ones.valueC || 0) + (clip.valueC || 0)
+        };
+        delete totals.clip1;
+        return totals;
+      }
+
+      function mergeClipAverages(averages){
+        if (!averages?.clip1) return averages;
+        const clip = averages.clip1;
+        const ones = averages['1'] || { dailyChangeC: 0 };
+        averages['1'] = {
+          dailyChangeC: (ones.dailyChangeC || 0) + (clip.dailyChangeC || 0)
+        };
+        delete averages.clip1;
+        return averages;
+      }
+
+      function mergeClipTimeseries(timeseries){
+        if (!Array.isArray(timeseries)) return timeseries;
+        timeseries.forEach((row) => {
+          const clip = row?.values?.clip1;
+          if (!clip) return;
+          const ones = row.values['1'] || { coins: 0, valueC: 0 };
+          const clipOnesCoins = Math.round((clip.valueC || 0) / 100);
+          row.values['1'] = {
+            coins: (ones.coins || 0) + clipOnesCoins,
+            valueC: (ones.valueC || 0) + (clip.valueC || 0)
+          };
+          delete row.values.clip1;
+        });
+        return timeseries;
+      }
 
       function normalizeStoreNumber(value){
         const cleaned = (value || '').replace(/\D+/g, '').slice(0, 6);
@@ -242,39 +276,6 @@
         }
       }
 
-      function renderTotals(totals){
-        totalsGrid.innerHTML = '';
-        denomOrder.forEach((denom) => {
-          const meta = denomMeta[denom];
-          const t = totals?.[denom] || { coins: 0, valueC: 0 };
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="stat-title"><span>${meta.label}</span><span class="pill">${fmtUsd(t.valueC)}</span></div>
-            <div class="big-number">${fmtInt(t.coins)} ${meta.unit}</div>
-            <div class="value-line"><span>Value</span><span>${fmtUsd(t.valueC)}</span></div>
-          `;
-          totalsGrid.appendChild(card);
-        });
-      }
-
-      function renderDeltas(averages){
-        deltaList.innerHTML = '';
-        denomOrder.forEach((denom) => {
-          const meta = denomMeta[denom];
-          const avg = averages?.[denom]?.dailyChangeC || 0;
-          const cls = avg > 0 ? 'delta-positive' : avg < 0 ? 'delta-negative' : 'muted';
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="stat-title"><span>${meta.label}</span><span class="pill">${avg >= 0 ? 'Accrual' : 'Burn'}</span></div>
-            <div class="big-number ${cls}">${fmtUsd(avg)}</div>
-            <div class="value-line"><span>Avg per day</span><span class="${cls}">${fmtUsd(avg)}</span></div>
-          `;
-          deltaList.appendChild(card);
-        });
-      }
-
       function renderSparkline(el, values, color){
         const width = el.clientWidth || 240;
         const height = 70;
@@ -289,22 +290,70 @@
         el.innerHTML = `<svg class="spark" viewBox="0 0 ${width} ${height}"><polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}" /><circle r="3.5" cx="${width-5}" cy="${height-6 - ((values[values.length-1]-min)/span)*(height-12)}" fill="${color}" /></svg>`;
       }
 
-      function renderCharts(timeseries){
+      function renderCharts(totals, averages, timeseries){
         charts.innerHTML = '';
-        denomOrder.forEach((denom) => {
-          const meta = denomMeta[denom];
-          const series = timeseries.map((row) => row.values[denom].valueC / 100);
-          const card = document.createElement('div');
-          card.className = 'card';
-          const header = document.createElement('div');
-          header.className = 'stat-title';
-          header.innerHTML = `<span>${meta.label}</span><span class="muted">${series.length} pts</span>`;
-          const sparkHost = document.createElement('div');
-          renderSparkline(sparkHost, series, meta.color);
-          card.appendChild(header);
-          card.appendChild(sparkHost);
-          charts.appendChild(card);
-        });
+        const seriesCount = (timeseries || []).length;
+        const hasTrend = seriesCount > 1;
+
+        const buildSection = (title, denomOrder) => {
+          const section = document.createElement('div');
+          section.className = 'chart-section';
+          const heading = document.createElement('h3');
+          heading.className = 'chart-section__header';
+          heading.textContent = title;
+          section.appendChild(heading);
+
+          const list = document.createElement('div');
+          list.className = 'chart-grid';
+
+          denomOrder.forEach((denom) => {
+            const meta = denomMeta[denom];
+            const total = totals?.[denom] || { coins: 0, valueC: 0 };
+            const avg = averages?.[denom]?.dailyChangeC || 0;
+            const series = (timeseries || []).map((row) => (row.values?.[denom]?.valueC || 0) / 100);
+            if (series.length === 0) series.push(0);
+            const card = document.createElement('div');
+            card.className = 'chart-card';
+
+            const top = document.createElement('div');
+            top.className = 'chart-card__top';
+            const label = document.createElement('div');
+            label.className = 'chart-label';
+            label.innerHTML = `<span class="chart-dot" style="background:${meta.color}"></span><span>${meta.label}</span><span class="chart-pill">${meta.unit}</span>`;
+            const chip = document.createElement('div');
+            const trendText = hasTrend ? (avg >= 0 ? 'Accrual' : 'Burn') : 'No trend yet';
+            const trendDir = hasTrend ? (avg >= 0 ? 'up' : 'down') : 'none';
+            chip.className = 'chart-chip';
+            chip.dataset.trend = trendDir;
+            chip.textContent = trendText;
+            top.appendChild(label);
+            top.appendChild(chip);
+
+            const metaGrid = document.createElement('div');
+            metaGrid.className = 'chart-meta';
+            metaGrid.innerHTML = `
+              <div class="chart-meta__item"><span>Total value</span><strong>${fmtUsd(total.valueC)}</strong></div>
+              <div class="chart-meta__item"><span>Total ${meta.unit}</span><strong>${fmtInt(total.coins)}</strong></div>
+              <div class="chart-meta__item"><span>Avg/day</span><strong>${hasTrend ? fmtUsd(avg) : '—'}</strong></div>
+              <div class="chart-meta__item"><span>Latest</span><strong>${fmtUsd(series[series.length - 1] * 100)}</strong></div>
+            `;
+
+            const sparkHost = document.createElement('div');
+            sparkHost.className = 'chart-graph';
+            renderSparkline(sparkHost, series, meta.color);
+
+            card.appendChild(top);
+            card.appendChild(metaGrid);
+            card.appendChild(sparkHost);
+            list.appendChild(card);
+          });
+
+          section.appendChild(list);
+          charts.appendChild(section);
+        };
+
+        buildSection('Coins', denomGroups.coins);
+        buildSection('Bills', denomGroups.bills);
       }
 
       async function loadStats(){
@@ -316,12 +365,13 @@
           const res = await fetch(`/api/count-stats?store=${encodeURIComponent(storeNumber)}&days=${days}`);
           if (!res.ok) throw new Error('Request failed');
           const payload = await res.json();
+          if (payload.totals) mergeClipIntoOnes(payload.totals);
+          if (payload.averages) mergeClipAverages(payload.averages);
+          if (payload.timeseries) mergeClipTimeseries(payload.timeseries);
           latestResponse = payload;
           sanitizeWindowOption(payload.availableDates);
           coverage.textContent = describeCoverage(payload.range, payload.availableDates);
-          renderTotals(payload.totals);
-          renderDeltas(payload.averages);
-          renderCharts(payload.timeseries || []);
+          renderCharts(payload.totals, payload.averages, payload.timeseries || []);
           if (payload.range) {
             lastUpdated.textContent = `Window ${payload.range.start} → ${payload.range.end}`;
           } else {
@@ -331,8 +381,6 @@
           console.error(err);
           coverage.textContent = 'Unable to load stats';
           lastUpdated.textContent = 'Failed to load stats';
-          totalsGrid.innerHTML = '<div class="muted">No data</div>';
-          deltaList.innerHTML = '';
           charts.innerHTML = '';
         }
       }
