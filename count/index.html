@@ -30,6 +30,7 @@
     .date-row input[type=date]{background:rgba(255,255,255,.04);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700;letter-spacing:.02em}
     .date-row input[type=date]:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
     .last-edited{color:var(--muted);text-align:center;font-weight:700;margin:-8px 0 14px;letter-spacing:.01em}
+    .client-time{color:var(--muted);text-align:center;font-weight:700;margin:-4px 0 16px;letter-spacing:.01em}
     .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start;margin-top:10px}
     .colwrap{display:grid;gap:12px;height:100%;align-self:start;padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 18px 40px rgba(0,0,0,.32)}
     .colwrap--safe{grid-column:1/-1;max-width:720px;justify-self:center;width:100%;padding:0;background:none;border:0;box-shadow:none}
@@ -99,6 +100,7 @@
       </div>
     </div>
     <div class="last-edited" id="last-edited">Last edited: —</div>
+    <div class="client-time" id="client-time">Your device time: —</div>
     <div class="wrap">
       <!-- Drawer 1 -->
       <div class="colwrap">
@@ -214,7 +216,15 @@
 
       const datePicker = document.getElementById('date-picker');
       const lastEditedEl = document.getElementById('last-edited');
-      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const clientTimeEl = document.getElementById('client-time');
+
+      function getLocalTodayISO(){
+        const now = new Date();
+        const offsetMs = now.getTimezoneOffset() * 60000;
+        return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+      }
+
+      const today = getLocalTodayISO();
       datePicker.value = today;
       let dateKey = datePicker.value || today;
 
@@ -224,6 +234,13 @@
         if (isNaN(parsed.getTime())) { lastEditedEl.textContent = 'Last edited: —'; return; }
         const formatted = parsed.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
         lastEditedEl.textContent = `Last edited: ${formatted}`;
+      }
+
+      function renderClientDateTime(){
+        const now = new Date();
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
+        const formatted = now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+        clientTimeEl.textContent = `Your device time: ${formatted} (${tz})`;
       }
 
       // Map of input ids per drawer: [[['d3-q','d3-q-r'], ...], ...]
@@ -259,7 +276,7 @@
       }
 
       function updateDateKey(newDate){
-        dateKey = newDate || today;
+        dateKey = newDate || getLocalTodayISO();
         datePicker.value = dateKey;
       }
 
@@ -648,6 +665,8 @@
       }
 
       // initial render
+      renderClientDateTime();
+      setInterval(renderClientDateTime, 60000);
       ensureStoreNumber();
       renderLastEdited(null);
       if (storeNumber) {
