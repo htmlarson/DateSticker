@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Change Count · Stats</title>
+  <style>
+    :root { --bg:#0b1221; --panel:#0f172a; --ink:#e5e7eb; --line:#243249; --muted:#9ca3af; --blue:#60a5fa; --amber:#fbbf24; --green:#34d399; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.04),rgba(255,255,255,0)),var(--bg);color:var(--ink);padding:20px}
+    .page{max-width:1200px;margin:0 auto;display:grid;gap:14px}
+    h1{margin:0;text-align:center;letter-spacing:.02em}
+    .top-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between}
+    .card{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--panel);box-shadow:0 14px 30px rgba(0,0,0,.32)}
+    .muted{color:var(--muted)}
+    .store{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .store__label{text-transform:uppercase;letter-spacing:.05em;font-size:.82rem;color:var(--muted)}
+    .store__value{font-size:1.15rem;font-weight:800;letter-spacing:.08em}
+    .store__pill{padding:6px 10px;border-radius:999px;background:#1e293b;color:#cbd5e1;font-weight:700;font-size:.85rem;letter-spacing:.05em;border:1px solid var(--line)}
+    .store__actions{display:flex;gap:8px}
+    button{background:linear-gradient(180deg,#111a2c,#0d1423);border:1px solid var(--line);color:var(--ink);padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer;letter-spacing:.01em;transition:transform .08s ease,filter .15s ease}
+    button:hover{filter:brightness(1.08)}
+    button:active{transform:translateY(1px)}
+    select{background:rgba(255,255,255,.05);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:700}
+    select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+    .stat-title{display:flex;justify-content:space-between;align-items:center;font-weight:700;color:#e5e7eb;margin-bottom:6px}
+    .big-number{font-variant-numeric:tabular-nums;font-size:1.6rem;font-weight:900}
+    .value-line{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-weight:700;margin-top:6px}
+    .spark{width:100%;height:70px;margin-top:8px}
+    .store-overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.68);backdrop-filter:blur(4px);z-index:200;transition:opacity .25s ease,visibility .25s ease}
+    .store-overlay[hidden]{opacity:0;visibility:hidden}
+    .store-overlay__card{width:min(420px,90vw);padding:22px;border-radius:18px;background:linear-gradient(180deg,#111a2c,#0b1221);border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.45);display:grid;gap:12px}
+    .store-overlay__title{font-weight:900;font-size:1.05rem;letter-spacing:.02em;color:#e5e7eb}
+    .store-overlay__lead{color:#cbd5e1;font-weight:600}
+    .store-input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);text-align:center;font-weight:800;letter-spacing:.08em;font-size:1.05rem}
+    .store-input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+    .store__error{color:#f87171;font-weight:700;font-size:.9rem;min-height:1.1em}
+    .pill-row{display:flex;gap:10px;flex-wrap:wrap}
+    .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700;font-size:.82rem}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+    .delta-positive{color:var(--green)}
+    .delta-negative{color:#f87171}
+    .footer-note{color:var(--muted);font-size:.9rem;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Change Count · Stats</h1>
+    <div class="top-row">
+      <div class="store">
+        <div>
+          <div class="store__label">Store #</div>
+          <div class="store__value" id="store-display">—</div>
+          <div class="store__pill" id="store-status">Not set</div>
+        </div>
+        <div class="store__actions">
+          <button type="button" id="store-change">Change</button>
+        </div>
+      </div>
+      <div class="card" style="display:flex;gap:10px;align-items:center">
+        <div class="store__label">Window</div>
+        <select id="window-select" aria-label="Stats window">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="60">Last 60 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <div class="muted" id="coverage">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted">Totals across window</div>
+      <div class="grid" id="totals-grid"></div>
+    </div>
+
+    <div class="summary">
+      <div class="card">
+        <div class="muted">Average daily burn / accrual</div>
+        <div id="delta-list" class="grid"></div>
+      </div>
+      <div class="card">
+        <div class="muted">Notes</div>
+        <p class="muted">Stats use all saved drawer + safe counts for the selected store. Windows cap at 90 days and only include dates that have snapshots.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted">Coin trends</div>
+      <div class="grid" id="charts"></div>
+    </div>
+
+    <div class="footer-note" id="last-updated">Waiting for data…</div>
+  </div>
+
+  <div class="store-overlay" id="store-overlay" role="dialog" aria-modal="true">
+    <div class="store-overlay__card">
+      <div class="store-overlay__title">Enter your store number</div>
+      <div class="store-overlay__lead">Stats aggregate all counts for your store. Please enter your six-digit store number.</div>
+      <input id="store-input" name="store-input" class="store-input" type="text" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="000000" aria-label="Store number" autocomplete="off" />
+      <div class="store__error" id="store-error" aria-live="assertive"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;align-items:center">
+        <button type="button" id="store-save">Save store</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const STORE_STORAGE_KEY = 'change-count-store-number';
+      const windowSelect = document.getElementById('window-select');
+      const totalsGrid = document.getElementById('totals-grid');
+      const deltaList = document.getElementById('delta-list');
+      const charts = document.getElementById('charts');
+      const coverage = document.getElementById('coverage');
+      const lastUpdated = document.getElementById('last-updated');
+
+      const storeDisplay = document.getElementById('store-display');
+      const storeStatus = document.getElementById('store-status');
+      const storeChangeBtn = document.getElementById('store-change');
+      const storeOverlay = document.getElementById('store-overlay');
+      const storeInput = document.getElementById('store-input');
+      const storeError = document.getElementById('store-error');
+      const storeSaveBtn = document.getElementById('store-save');
+
+      const denomMeta = {
+        q: { label: 'Quarters', color: '#60a5fa', unit: 'coins' },
+        d: { label: 'Dimes', color: '#a78bfa', unit: 'coins' },
+        n: { label: 'Nickels', color: '#fbbf24', unit: 'coins' },
+        p: { label: 'Pennies', color: '#34d399', unit: 'coins' },
+        1: { label: '$1s', color: '#fcd34d', unit: 'bills' },
+        5: { label: '$5s', color: '#fb923c', unit: 'bills' },
+        10: { label: '$10s', color: '#f87171', unit: 'bills' },
+        20: { label: '$20s', color: '#34d399', unit: 'bills' },
+        50: { label: '$50s', color: '#38bdf8', unit: 'bills' },
+        100: { label: '$100s', color: '#c084fc', unit: 'bills' },
+        clip1: { label: 'Clips ($20)', color: '#e5e7eb', unit: 'clips' }
+      };
+
+      const denomOrder = ['q','d','n','p','1','5','10','20','50','100','clip1'];
+
+      let storeNumber = null;
+      let latestResponse = null;
+
+      const fmtUsd = (cents) => (cents/100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      const fmtInt = (val) => Math.round(val).toLocaleString('en-US');
+
+      function normalizeStoreNumber(value){
+        const cleaned = (value || '').replace(/\D+/g, '').slice(0, 6);
+        return /^\d{6}$/.test(cleaned) ? cleaned : null;
+      }
+
+      function renderStore(){
+        storeDisplay.textContent = storeNumber || '—';
+        storeStatus.textContent = storeNumber ? `Using store ${storeNumber}` : 'Store required';
+        storeError.textContent = '';
+        if (!storeNumber) {
+          storeOverlay.hidden = false;
+          storeInput.disabled = false;
+          storeInput.value = '';
+          storeSaveBtn.disabled = false;
+          storeInput.focus();
+          storeChangeBtn.disabled = true;
+        } else {
+          storeOverlay.hidden = true;
+          storeInput.disabled = true;
+          storeSaveBtn.disabled = true;
+          storeChangeBtn.disabled = false;
+        }
+      }
+
+      function ensureStoreNumber(){
+        const normalized = normalizeStoreNumber(localStorage.getItem(STORE_STORAGE_KEY));
+        if (normalized) {
+          storeNumber = normalized;
+        } else {
+          localStorage.removeItem(STORE_STORAGE_KEY);
+          storeNumber = null;
+        }
+        renderStore();
+      }
+
+      storeChangeBtn.addEventListener('click', () => {
+        storeOverlay.hidden = false;
+        storeInput.disabled = false;
+        storeSaveBtn.disabled = false;
+        storeInput.value = storeNumber || '';
+        storeInput.focus();
+        storeInput.select();
+      });
+
+      storeInput.addEventListener('input', () => {
+        storeError.textContent = '';
+        storeInput.value = storeInput.value.replace(/\D+/g, '').slice(0, 6);
+      });
+
+      storeSaveBtn.addEventListener('click', () => {
+        const normalized = normalizeStoreNumber(storeInput.value);
+        if (!normalized) {
+          storeError.textContent = 'Enter a 6-digit store number.';
+          storeInput.focus();
+          return;
+        }
+        storeNumber = normalized;
+        localStorage.setItem(STORE_STORAGE_KEY, storeNumber);
+        storeOverlay.hidden = true;
+        loadStats();
+        renderStore();
+      });
+
+      windowSelect.addEventListener('change', () => {
+        if (storeNumber) {
+          loadStats();
+        }
+      });
+
+      function describeCoverage(range, availableDates){
+        if (!availableDates || availableDates.length === 0) {
+          return 'No data yet';
+        }
+        const first = availableDates[0];
+        const last = availableDates[availableDates.length - 1];
+        return `Using ${range.days} days · data span ${first} to ${last}`;
+      }
+
+      function sanitizeWindowOption(availableDates){
+        if (!availableDates || availableDates.length === 0) return;
+        const first = availableDates[0];
+        const last = availableDates[availableDates.length - 1];
+        const start = new Date(first);
+        const end = new Date(last);
+        const diffDays = Math.floor((end - start) / 86400000) + 1;
+        const maxSpan = Math.min(90, diffDays);
+        Array.from(windowSelect.options).forEach((opt) => {
+          opt.disabled = parseInt(opt.value, 10) > maxSpan;
+        });
+        const selected = parseInt(windowSelect.value, 10);
+        if (selected > maxSpan) {
+          windowSelect.value = String(maxSpan >= 30 ? 30 : maxSpan);
+        }
+      }
+
+      function renderTotals(totals){
+        totalsGrid.innerHTML = '';
+        denomOrder.forEach((denom) => {
+          const meta = denomMeta[denom];
+          const t = totals?.[denom] || { coins: 0, valueC: 0 };
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="stat-title"><span>${meta.label}</span><span class="pill">${fmtUsd(t.valueC)}</span></div>
+            <div class="big-number">${fmtInt(t.coins)} ${meta.unit}</div>
+            <div class="value-line"><span>Value</span><span>${fmtUsd(t.valueC)}</span></div>
+          `;
+          totalsGrid.appendChild(card);
+        });
+      }
+
+      function renderDeltas(averages){
+        deltaList.innerHTML = '';
+        denomOrder.forEach((denom) => {
+          const meta = denomMeta[denom];
+          const avg = averages?.[denom]?.dailyChangeC || 0;
+          const cls = avg > 0 ? 'delta-positive' : avg < 0 ? 'delta-negative' : 'muted';
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="stat-title"><span>${meta.label}</span><span class="pill">${avg >= 0 ? 'Accrual' : 'Burn'}</span></div>
+            <div class="big-number ${cls}">${fmtUsd(avg)}</div>
+            <div class="value-line"><span>Avg per day</span><span class="${cls}">${fmtUsd(avg)}</span></div>
+          `;
+          deltaList.appendChild(card);
+        });
+      }
+
+      function renderSparkline(el, values, color){
+        const width = el.clientWidth || 240;
+        const height = 70;
+        const max = Math.max(...values, 0.01);
+        const min = Math.min(...values, 0);
+        const span = max - min || 1;
+        const pts = values.map((v, i) => {
+          const x = (i / Math.max(values.length - 1, 1)) * (width - 6) + 3;
+          const y = height - 6 - ((v - min) / span) * (height - 12);
+          return `${x},${y}`;
+        }).join(' ');
+        el.innerHTML = `<svg class="spark" viewBox="0 0 ${width} ${height}"><polyline fill="none" stroke="${color}" stroke-width="2" points="${pts}" /><circle r="3.5" cx="${width-5}" cy="${height-6 - ((values[values.length-1]-min)/span)*(height-12)}" fill="${color}" /></svg>`;
+      }
+
+      function renderCharts(timeseries){
+        charts.innerHTML = '';
+        denomOrder.forEach((denom) => {
+          const meta = denomMeta[denom];
+          const series = timeseries.map((row) => row.values[denom].valueC / 100);
+          const card = document.createElement('div');
+          card.className = 'card';
+          const header = document.createElement('div');
+          header.className = 'stat-title';
+          header.innerHTML = `<span>${meta.label}</span><span class="muted">${series.length} pts</span>`;
+          const sparkHost = document.createElement('div');
+          renderSparkline(sparkHost, series, meta.color);
+          card.appendChild(header);
+          card.appendChild(sparkHost);
+          charts.appendChild(card);
+        });
+      }
+
+      async function loadStats(){
+        if (!storeNumber) return;
+        coverage.textContent = 'Loading…';
+        lastUpdated.textContent = 'Loading stats…';
+        const days = parseInt(windowSelect.value, 10) || 30;
+        try {
+          const res = await fetch(`/api/count-stats?store=${encodeURIComponent(storeNumber)}&days=${days}`);
+          if (!res.ok) throw new Error('Request failed');
+          const payload = await res.json();
+          latestResponse = payload;
+          sanitizeWindowOption(payload.availableDates);
+          coverage.textContent = describeCoverage(payload.range, payload.availableDates);
+          renderTotals(payload.totals);
+          renderDeltas(payload.averages);
+          renderCharts(payload.timeseries || []);
+          if (payload.range) {
+            lastUpdated.textContent = `Window ${payload.range.start} → ${payload.range.end}`;
+          } else {
+            lastUpdated.textContent = 'No data yet';
+          }
+        } catch (err) {
+          console.error(err);
+          coverage.textContent = 'Unable to load stats';
+          lastUpdated.textContent = 'Failed to load stats';
+          totalsGrid.innerHTML = '<div class="muted">No data</div>';
+          deltaList.innerHTML = '';
+          charts.innerHTML = '';
+        }
+      }
+
+      ensureStoreNumber();
+      if (storeNumber) {
+        loadStats();
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -33,7 +33,7 @@ export async function onRequest(context) {
 
   const coinDenoms = ['q', 'd', 'n', 'p'];
   const billDenoms = ['1', '5', '10', '20', '50', '100', 'clip1'];
-  const denomValuesC = {
+  const denomValueCents = {
     q: 25,
     d: 10,
     n: 5,
@@ -103,7 +103,7 @@ export async function onRequest(context) {
     }
   }
 
-  if (request.method === 'PUT') {
+  if (request.method === 'PUT' || request.method === 'POST') {
     let payload;
     try {
       payload = await request.json();
@@ -115,12 +115,13 @@ export async function onRequest(context) {
       return jsonResponse(400, { error: 'Body must include drawers and safe objects.' });
     }
 
-    const tx = env.db;
-    await tx.prepare('BEGIN').run();
+    let lastStep = 'parsing payload';
+    let lastLineContext = null;
 
     try {
       const updatedAt = new Date().toISOString();
-      const existing = await tx
+      lastStep = 'looking up existing snapshot';
+      const existing = await env.db
         .prepare('SELECT id FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?')
         .bind(storeNumber, dateKey)
         .first();
@@ -128,27 +129,76 @@ export async function onRequest(context) {
       let snapshotId;
       if (existing?.id) {
         snapshotId = existing.id;
-        await tx.prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?').bind(updatedAt, snapshotId).run();
-        await tx.prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?').bind(snapshotId).run();
+        lastStep = 'updating snapshot timestamp';
+        await env.db
+          .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
+          .bind(updatedAt, snapshotId)
+          .run();
+
+        lastStep = 'deleting existing snapshot lines';
+        await env.db
+          .prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?')
+          .bind(snapshotId)
+          .run();
       } else {
-        const insertResult = await tx
+        lastStep = 'inserting new snapshot row';
+        const insertResult = await env.db
           .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
           .bind(storeNumber, dateKey, updatedAt)
           .run();
         snapshotId = insertResult.meta.last_row_id;
       }
 
-      const statements = [];
+      function asNonNegativeInt(value) {
+        return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+      }
 
-      function addLine(location, type, denomination, qty, rolledQty) {
-        const denomValue = denomValuesC[denomination];
-        statements.push(
-          tx
+      async function addLine(location, type, denomination, qty, rolledQty) {
+        const normalizedQty = asNonNegativeInt(qty);
+        const normalizedRolled = asNonNegativeInt(rolledQty);
+        const denomValue = denomValueCents[denomination];
+        if (!Number.isFinite(denomValue)) {
+          lastStep = 'validating denomination';
+          throw new Error(`Unknown denomination ${denomination}`);
+        }
+        try {
+          lastStep = 'inserting snapshot line';
+          lastLineContext = {
+            location,
+            type,
+            denomination,
+            normalizedQty,
+            normalizedRolled,
+            denomValue
+          };
+          await env.db
             .prepare(
               'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
             )
-            .bind(snapshotId, location, type, denomination, qty, rolledQty, denomValue)
-        );
+            .bind(
+              snapshotId,
+              location,
+              type,
+              denomination,
+              normalizedQty,
+              normalizedRolled,
+              denomValue
+            )
+            .run();
+        } catch (err) {
+          console.error('Failed to insert snapshot line', {
+            location,
+            type,
+            denomination,
+            normalizedQty,
+            normalizedRolled,
+            denomValue,
+            snapshotId,
+            message: err?.message,
+            stack: err?.stack
+          });
+          throw err;
+        }
       }
 
       for (const drawerKey of Object.keys(payload.drawers)) {
@@ -157,47 +207,45 @@ export async function onRequest(context) {
         const bills = drawer.bills || drawer;
         const location = `drawer${drawerKey}`;
 
-        coinDenoms.forEach((k) => {
+        for (const k of coinDenoms) {
           const qty = typeof coins[k] === 'number' ? coins[k] : 0;
           const rolled = typeof coins[`${k}R`] === 'number' ? coins[`${k}R`] : 0;
-          addLine(location, 'coin', k, qty, rolled);
-        });
+          await addLine(location, 'coin', k, qty, rolled);
+        }
 
-        billDenoms.forEach((k) => {
+        for (const k of billDenoms) {
           const qty = typeof bills[k] === 'number' ? bills[k] : 0;
-          addLine(location, 'bill', k, qty, 0);
-        });
+          await addLine(location, 'bill', k, qty, 0);
+        }
       }
 
       const safeCoins = payload.safe?.coins || {};
       const safeBills = payload.safe?.bills || {};
 
-      coinDenoms.forEach((k) => {
+      for (const k of coinDenoms) {
         const qty = typeof safeCoins[k] === 'number' ? safeCoins[k] : 0;
         const rolled = typeof safeCoins[`${k}R`] === 'number' ? safeCoins[`${k}R`] : 0;
-        addLine('safe', 'coin', k, qty, rolled);
-      });
-
-      billDenoms.forEach((k) => {
-        const qty = typeof safeBills[k] === 'number' ? safeBills[k] : 0;
-        addLine('safe', 'bill', k, qty, 0);
-      });
-
-      for (const stmt of statements) {
-        await stmt.run();
+        await addLine('safe', 'coin', k, qty, rolled);
       }
 
-      await tx.prepare('COMMIT').run();
+      for (const k of billDenoms) {
+        const qty = typeof safeBills[k] === 'number' ? safeBills[k] : 0;
+        await addLine('safe', 'bill', k, qty, 0);
+      }
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
-      await tx.prepare('ROLLBACK').run();
-      console.error('D1 write failed', err);
-      return jsonResponse(500, { error: 'Unable to save counts.' });
+      console.error('D1 write failed', { lastStep, lastLineContext, message: err?.message, stack: err?.stack });
+      return jsonResponse(500, {
+        error: 'Unable to save counts.',
+        detail: lastStep,
+        line: lastLineContext,
+        message: err?.message
+      });
     }
   }
 
   return new Response('Method Not Allowed', {
     status: 405,
-    headers: { ...JSON_HEADERS, Allow: 'GET, PUT' }
+    headers: { ...JSON_HEADERS, Allow: 'GET, PUT, POST' }
   });
 }

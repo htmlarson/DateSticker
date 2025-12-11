@@ -474,7 +474,7 @@
         const safePayload = readSafeCounts();
         try {
           const res = await fetch(`/api/count?date=${encodeURIComponent(dateKey)}&store=${encodeURIComponent(storeNumber)}`, {
-            method: 'PUT',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ drawers: drawersPayload, safe: safePayload })
           });
