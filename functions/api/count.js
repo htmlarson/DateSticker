@@ -102,8 +102,12 @@ export async function onRequest(context) {
       return jsonResponse(400, { error: 'Body must include drawers and safe objects.' });
     }
 
+    let lastStep = 'parsing payload';
+    let lastLineContext = null;
+
     try {
       const updatedAt = new Date().toISOString();
+      lastStep = 'looking up existing snapshot';
       const existing = await env.db
         .prepare('SELECT id FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?')
         .bind(storeNumber, dateKey)
@@ -112,16 +116,19 @@ export async function onRequest(context) {
       let snapshotId;
       if (existing?.id) {
         snapshotId = existing.id;
+        lastStep = 'updating snapshot timestamp';
         await env.db
           .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
           .bind(updatedAt, snapshotId)
           .run();
 
+        lastStep = 'deleting existing snapshot lines';
         await env.db
           .prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?')
           .bind(snapshotId)
           .run();
       } else {
+        lastStep = 'inserting new snapshot row';
         const insertResult = await env.db
           .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
           .bind(storeNumber, dateKey, updatedAt)
@@ -137,6 +144,8 @@ export async function onRequest(context) {
         const normalizedQty = asNonNegativeInt(qty);
         const normalizedRolled = asNonNegativeInt(rolledQty);
         try {
+          lastStep = 'inserting snapshot line';
+          lastLineContext = { location, type, denomination, normalizedQty, normalizedRolled };
           await env.db
             .prepare(
               'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
@@ -191,8 +200,13 @@ export async function onRequest(context) {
       }
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
-      console.error('D1 write failed', err);
-      return jsonResponse(500, { error: 'Unable to save counts.' });
+      console.error('D1 write failed', { lastStep, lastLineContext, message: err?.message, stack: err?.stack });
+      return jsonResponse(500, {
+        error: 'Unable to save counts.',
+        detail: lastStep,
+        line: lastLineContext,
+        message: err?.message
+      });
     }
   }
 
