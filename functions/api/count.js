@@ -33,6 +33,19 @@ export async function onRequest(context) {
 
   const coinDenoms = ['q', 'd', 'n', 'p'];
   const billDenoms = ['1', '5', '10', '20', '50', '100', 'clip1'];
+  const denomValueCents = {
+    q: 25,
+    d: 10,
+    n: 5,
+    p: 1,
+    1: 100,
+    5: 500,
+    10: 1000,
+    20: 2000,
+    50: 5000,
+    100: 10000,
+    clip1: 2000
+  };
 
   if (request.method === 'GET') {
     try {
@@ -143,14 +156,34 @@ export async function onRequest(context) {
       async function addLine(location, type, denomination, qty, rolledQty) {
         const normalizedQty = asNonNegativeInt(qty);
         const normalizedRolled = asNonNegativeInt(rolledQty);
+        const denomValue = denomValueCents[denomination];
+        if (!Number.isFinite(denomValue)) {
+          lastStep = 'validating denomination';
+          throw new Error(`Unknown denomination ${denomination}`);
+        }
         try {
           lastStep = 'inserting snapshot line';
-          lastLineContext = { location, type, denomination, normalizedQty, normalizedRolled };
+          lastLineContext = {
+            location,
+            type,
+            denomination,
+            normalizedQty,
+            normalizedRolled,
+            denomValue
+          };
           await env.db
             .prepare(
-              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
+              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
             )
-            .bind(snapshotId, location, type, denomination, normalizedQty, normalizedRolled)
+            .bind(
+              snapshotId,
+              location,
+              type,
+              denomination,
+              normalizedQty,
+              normalizedRolled,
+              denomValue
+            )
             .run();
         } catch (err) {
           console.error('Failed to insert snapshot line', {
@@ -159,6 +192,7 @@ export async function onRequest(context) {
             denomination,
             normalizedQty,
             normalizedRolled,
+            denomValue,
             snapshotId,
             message: err?.message,
             stack: err?.stack
