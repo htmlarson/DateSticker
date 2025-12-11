@@ -129,16 +129,20 @@ export async function onRequest(context) {
         snapshotId = insertResult.meta.last_row_id;
       }
 
-      const statements = [];
+      const insertLineStmt = env.db.prepare(
+        'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
+      );
 
-      function addLine(location, type, denomination, qty, rolledQty) {
-        statements.push(
-          env.db
-            .prepare(
-              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
-            )
-            .bind(snapshotId, location, type, denomination, qty, rolledQty)
-        );
+      function asNonNegativeInt(value) {
+        return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+      }
+
+      async function addLine(location, type, denomination, qty, rolledQty) {
+        const normalizedQty = asNonNegativeInt(qty);
+        const normalizedRolled = asNonNegativeInt(rolledQty);
+        await insertLineStmt
+          .bind(snapshotId, location, type, denomination, normalizedQty, normalizedRolled)
+          .run();
       }
 
       for (const drawerKey of Object.keys(payload.drawers)) {
@@ -147,34 +151,30 @@ export async function onRequest(context) {
         const bills = drawer.bills || drawer;
         const location = `drawer${drawerKey}`;
 
-        coinDenoms.forEach((k) => {
+        for (const k of coinDenoms) {
           const qty = typeof coins[k] === 'number' ? coins[k] : 0;
           const rolled = typeof coins[`${k}R`] === 'number' ? coins[`${k}R`] : 0;
-          addLine(location, 'coin', k, qty, rolled);
-        });
+          await addLine(location, 'coin', k, qty, rolled);
+        }
 
-        billDenoms.forEach((k) => {
+        for (const k of billDenoms) {
           const qty = typeof bills[k] === 'number' ? bills[k] : 0;
-          addLine(location, 'bill', k, qty, 0);
-        });
+          await addLine(location, 'bill', k, qty, 0);
+        }
       }
 
       const safeCoins = payload.safe?.coins || {};
       const safeBills = payload.safe?.bills || {};
 
-      coinDenoms.forEach((k) => {
+      for (const k of coinDenoms) {
         const qty = typeof safeCoins[k] === 'number' ? safeCoins[k] : 0;
         const rolled = typeof safeCoins[`${k}R`] === 'number' ? safeCoins[`${k}R`] : 0;
-        addLine('safe', 'coin', k, qty, rolled);
-      });
+        await addLine('safe', 'coin', k, qty, rolled);
+      }
 
-      billDenoms.forEach((k) => {
+      for (const k of billDenoms) {
         const qty = typeof safeBills[k] === 'number' ? safeBills[k] : 0;
-        addLine('safe', 'bill', k, qty, 0);
-      });
-
-      for (const stmt of statements) {
-        await stmt.run();
+        await addLine('safe', 'bill', k, qty, 0);
       }
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
