@@ -115,133 +115,163 @@ export async function onRequest(context) {
       return jsonResponse(400, { error: 'Body must include drawers and safe objects.' });
     }
 
-    let lastStep = 'parsing payload';
-    let lastLineContext = null;
+      let lastStep = 'parsing payload';
+      let lastLineContext = null;
 
-    try {
-      const updatedAt = new Date().toISOString();
-      lastStep = 'looking up existing snapshot';
-      const existing = await env.db
-        .prepare('SELECT id FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?')
-        .bind(storeNumber, dateKey)
-        .first();
+      try {
+        const updatedAt = new Date().toISOString();
+        lastStep = 'looking up existing snapshot';
+        const existing = await env.db
+          .prepare('SELECT id FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?')
+          .bind(storeNumber, dateKey)
+          .first();
 
-      let snapshotId;
-      if (existing?.id) {
-        snapshotId = existing.id;
-        lastStep = 'updating snapshot timestamp';
-        await env.db
-          .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
-          .bind(updatedAt, snapshotId)
-          .run();
-
-        lastStep = 'deleting existing snapshot lines';
-        await env.db
-          .prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?')
-          .bind(snapshotId)
-          .run();
-      } else {
-        lastStep = 'inserting new snapshot row';
-        const insertResult = await env.db
-          .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
-          .bind(storeNumber, dateKey, updatedAt)
-          .run();
-        snapshotId = insertResult.meta.last_row_id;
-      }
-
-      function asNonNegativeInt(value) {
-        return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
-      }
-
-      async function addLine(location, type, denomination, qty, rolledQty) {
-        const normalizedQty = asNonNegativeInt(qty);
-        const normalizedRolled = asNonNegativeInt(rolledQty);
-        const denomValue = denomValueCents[denomination];
-        if (!Number.isFinite(denomValue)) {
-          lastStep = 'validating denomination';
-          throw new Error(`Unknown denomination ${denomination}`);
-        }
-        try {
-          lastStep = 'inserting snapshot line';
-          lastLineContext = {
-            location,
-            type,
-            denomination,
-            normalizedQty,
-            normalizedRolled,
-            denomValue
-          };
+        let snapshotId;
+        if (existing?.id) {
+          snapshotId = existing.id;
+          lastStep = 'updating snapshot timestamp';
           await env.db
-            .prepare(
-              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
-            )
-            .bind(
-              snapshotId,
-              location,
-              type,
-              denomination,
-              normalizedQty,
-              normalizedRolled,
-              denomValue
-            )
+            .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
+            .bind(updatedAt, snapshotId)
             .run();
-        } catch (err) {
-          console.error('Failed to insert snapshot line', {
+        } else {
+          lastStep = 'inserting new snapshot row';
+          const insertResult = await env.db
+            .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
+            .bind(storeNumber, dateKey, updatedAt)
+            .run();
+          snapshotId = insertResult.meta.last_row_id;
+        }
+
+        function asNonNegativeInt(value) {
+          return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 0;
+        }
+
+        const desiredLines = new Map();
+        const lineKey = (location, type, denomination) => `${location}|${type}|${denomination}`;
+
+        function queueLine(location, type, denomination, qty, rolledQty) {
+          const normalizedQty = asNonNegativeInt(qty);
+          const normalizedRolled = asNonNegativeInt(rolledQty);
+          if (normalizedQty === 0 && normalizedRolled === 0) return;
+
+          const denomValue = denomValueCents[denomination];
+          if (!Number.isFinite(denomValue)) {
+            lastStep = 'validating denomination';
+            throw new Error(`Unknown denomination ${denomination}`);
+          }
+
+          const key = lineKey(location, type, denomination);
+          desiredLines.set(key, {
             location,
             type,
             denomination,
-            normalizedQty,
-            normalizedRolled,
-            denomValue,
-            snapshotId,
-            message: err?.message,
-            stack: err?.stack
+            qty: normalizedQty,
+            rolledQty: normalizedRolled,
+            denomValue
           });
-          throw err;
         }
-      }
 
-      for (const drawerKey of Object.keys(payload.drawers)) {
-        const drawer = payload.drawers[drawerKey] || {};
-        const coins = drawer.coins || drawer;
-        const bills = drawer.bills || drawer;
-        const location = `drawer${drawerKey}`;
+        for (const drawerKey of Object.keys(payload.drawers)) {
+          const drawer = payload.drawers[drawerKey] || {};
+          const coins = drawer.coins || drawer;
+          const bills = drawer.bills || drawer;
+          const location = `drawer${drawerKey}`;
+
+          for (const k of coinDenoms) {
+            const qty = typeof coins[k] === 'number' ? coins[k] : 0;
+            const rolled = typeof coins[`${k}R`] === 'number' ? coins[`${k}R`] : 0;
+            queueLine(location, 'coin', k, qty, rolled);
+          }
+
+          for (const k of billDenoms) {
+            const qty = typeof bills[k] === 'number' ? bills[k] : 0;
+            queueLine(location, 'bill', k, qty, 0);
+          }
+        }
+
+        const safeCoins = payload.safe?.coins || {};
+        const safeBills = payload.safe?.bills || {};
 
         for (const k of coinDenoms) {
-          const qty = typeof coins[k] === 'number' ? coins[k] : 0;
-          const rolled = typeof coins[`${k}R`] === 'number' ? coins[`${k}R`] : 0;
-          await addLine(location, 'coin', k, qty, rolled);
+          const qty = typeof safeCoins[k] === 'number' ? safeCoins[k] : 0;
+          const rolled = typeof safeCoins[`${k}R`] === 'number' ? safeCoins[`${k}R`] : 0;
+          queueLine('safe', 'coin', k, qty, rolled);
         }
 
         for (const k of billDenoms) {
-          const qty = typeof bills[k] === 'number' ? bills[k] : 0;
-          await addLine(location, 'bill', k, qty, 0);
+          const qty = typeof safeBills[k] === 'number' ? safeBills[k] : 0;
+          queueLine('safe', 'bill', k, qty, 0);
         }
-      }
 
-      const safeCoins = payload.safe?.coins || {};
-      const safeBills = payload.safe?.bills || {};
+        const statements = [];
 
-      for (const k of coinDenoms) {
-        const qty = typeof safeCoins[k] === 'number' ? safeCoins[k] : 0;
-        const rolled = typeof safeCoins[`${k}R`] === 'number' ? safeCoins[`${k}R`] : 0;
-        await addLine('safe', 'coin', k, qty, rolled);
-      }
+        if (existing?.id) {
+          lastStep = 'loading existing snapshot lines';
+          const existingRows = await env.db
+            .prepare(
+              'SELECT id, location, type, denomination, qty, rolled_qty FROM cash_snapshot_lines WHERE snapshot_id = ?'
+            )
+            .bind(snapshotId)
+            .all();
 
-      for (const k of billDenoms) {
-        const qty = typeof safeBills[k] === 'number' ? safeBills[k] : 0;
-        await addLine('safe', 'bill', k, qty, 0);
+          const existingLines = new Map();
+          for (const row of existingRows.results || []) {
+            existingLines.set(lineKey(row.location, row.type, row.denomination), row);
+          }
+
+          for (const [key, row] of existingLines) {
+            const desired = desiredLines.get(key);
+            if (!desired) {
+              statements.push(env.db.prepare('DELETE FROM cash_snapshot_lines WHERE id = ?').bind(row.id));
+              continue;
+            }
+
+            if (desired.qty !== row.qty || desired.rolledQty !== row.rolled_qty) {
+              statements.push(
+                env.db
+                  .prepare('UPDATE cash_snapshot_lines SET qty = ?, rolled_qty = ? WHERE id = ?')
+                  .bind(desired.qty, desired.rolledQty, row.id)
+              );
+            }
+
+            desiredLines.delete(key);
+          }
+        }
+
+        for (const line of desiredLines.values()) {
+          statements.push(
+            env.db
+              .prepare(
+                'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
+              )
+              .bind(
+                snapshotId,
+                line.location,
+                line.type,
+                line.denomination,
+                line.qty,
+                line.rolledQty,
+                line.denomValue
+              )
+          );
+        }
+
+        if (statements.length) {
+          lastStep = 'applying snapshot changes';
+          await env.db.batch(statements);
+        }
+
+        return jsonResponse(200, { ok: true, updatedAt });
+      } catch (err) {
+        console.error('D1 write failed', { lastStep, lastLineContext, message: err?.message, stack: err?.stack });
+        return jsonResponse(500, {
+          error: 'Unable to save counts.',
+          detail: lastStep,
+          line: lastLineContext,
+          message: err?.message
+        });
       }
-      return jsonResponse(200, { ok: true, updatedAt });
-    } catch (err) {
-      console.error('D1 write failed', { lastStep, lastLineContext, message: err?.message, stack: err?.stack });
-      return jsonResponse(500, {
-        error: 'Unable to save counts.',
-        detail: lastStep,
-        line: lastLineContext,
-        message: err?.message
-      });
-    }
   }
 
   return new Response('Method Not Allowed', {
