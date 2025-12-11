@@ -115,9 +115,12 @@ export async function onRequest(context) {
       return jsonResponse(400, { error: 'Body must include drawers and safe objects.' });
     }
 
+    const tx = env.db;
+    await tx.prepare('BEGIN').run();
+
     try {
       const updatedAt = new Date().toISOString();
-      const existing = await env.db
+      const existing = await tx
         .prepare('SELECT id FROM cash_snapshots WHERE store_id = ? AND snapshot_date = ?')
         .bind(storeNumber, dateKey)
         .first();
@@ -125,16 +128,10 @@ export async function onRequest(context) {
       let snapshotId;
       if (existing?.id) {
         snapshotId = existing.id;
-        await env.db
-          .prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?')
-          .bind(updatedAt, snapshotId)
-          .run();
-        await env.db
-          .prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?')
-          .bind(snapshotId)
-          .run();
+        await tx.prepare('UPDATE cash_snapshots SET updated_at = ? WHERE id = ?').bind(updatedAt, snapshotId).run();
+        await tx.prepare('DELETE FROM cash_snapshot_lines WHERE snapshot_id = ?').bind(snapshotId).run();
       } else {
-        const insertResult = await env.db
+        const insertResult = await tx
           .prepare('INSERT INTO cash_snapshots (store_id, snapshot_date, updated_at) VALUES (?, ?, ?)')
           .bind(storeNumber, dateKey, updatedAt)
           .run();
@@ -146,7 +143,7 @@ export async function onRequest(context) {
       function addLine(location, type, denomination, qty, rolledQty) {
         const denomValue = denomValuesC[denomination];
         statements.push(
-          env.db
+          tx
             .prepare(
               'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
             )
@@ -186,12 +183,14 @@ export async function onRequest(context) {
         addLine('safe', 'bill', k, qty, 0);
       });
 
-      if (statements.length > 0) {
-        await env.db.batch(statements);
+      for (const stmt of statements) {
+        await stmt.run();
       }
 
+      await tx.prepare('COMMIT').run();
       return jsonResponse(200, { ok: true, updatedAt });
     } catch (err) {
+      await tx.prepare('ROLLBACK').run();
       console.error('D1 write failed', err);
       return jsonResponse(500, { error: 'Unable to save counts.' });
     }
