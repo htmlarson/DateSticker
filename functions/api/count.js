@@ -33,19 +33,6 @@ export async function onRequest(context) {
 
   const coinDenoms = ['q', 'd', 'n', 'p'];
   const billDenoms = ['1', '5', '10', '20', '50', '100', 'clip1'];
-  const denomValuesC = {
-    q: 25,
-    d: 10,
-    n: 5,
-    p: 1,
-    1: 100,
-    5: 500,
-    10: 1000,
-    20: 2000,
-    50: 5000,
-    100: 10000,
-    clip1: 2000
-  };
 
   if (request.method === 'GET') {
     try {
@@ -141,13 +128,12 @@ export async function onRequest(context) {
       const statements = [];
 
       function addLine(location, type, denomination, qty, rolledQty) {
-        const denomValue = denomValuesC[denomination];
         statements.push(
           tx
             .prepare(
-              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty, denom_value_cents) VALUES (?, ?, ?, ?, ?, ?, ?)'
+              'INSERT INTO cash_snapshot_lines (snapshot_id, location, type, denomination, qty, rolled_qty) VALUES (?, ?, ?, ?, ?, ?)'
             )
-            .bind(snapshotId, location, type, denomination, qty, rolledQty, denomValue)
+            .bind(snapshotId, location, type, denomination, qty, rolledQty)
         );
       }
 
