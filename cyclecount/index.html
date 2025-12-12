@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cycle Count</title>
+  <style>
+    :root {
+      --panel: #f7f9fb;
+      --border: #e5e7eb;
+      --ink: #111827;
+      --muted: #6b7280;
+      --accent: #0ea5e9;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+      background: #fff;
+      color: var(--ink);
+      padding: 24px;
+    }
+    .page { max-width: 1100px; margin: 0 auto; display: grid; gap: 18px; }
+    h1 { margin: 0 0 6px; letter-spacing: .01em; }
+    p.lead { margin: 0; color: var(--muted); font-weight: 600; }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: 18px;
+      box-shadow: 0 16px 36px rgba(0,0,0,.06);
+    }
+    .top-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 12px; align-items: center; }
+    .store-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #fff;
+      display: grid;
+      gap: 4px;
+      align-items: center;
+      grid-template-columns: 1fr auto;
+    }
+    .store__label { font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    .store__value { font-weight: 800; letter-spacing: .08em; font-size: 1.05rem; }
+    .store__pill { justify-self: start; background: #e0f2fe; color: #0369a1; padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: .85rem; letter-spacing: .04em; }
+    .store__actions { display: flex; gap: 8px; align-items: center; }
+    .date-picker { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--muted); justify-content: flex-end; }
+    .date-picker input[type=date] { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-weight: 700; letter-spacing: .02em; }
+    button {
+      background: linear-gradient(180deg, #0ea5e9, #0284c7);
+      border: 1px solid #0ea5e9;
+      color: #ecfeff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 800;
+      cursor: pointer;
+      letter-spacing: .01em;
+      transition: transform .08s ease, filter .12s ease;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:active { transform: translateY(1px); }
+    .card__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+    .status-pill { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--muted); font-weight: 700; }
+    .items { border: 1px solid var(--border); border-radius: 14px; background: #fff; overflow: hidden; }
+    .item-row { display: grid; grid-template-columns: 1fr 110px; gap: 12px; align-items: center; padding: 12px 14px; border-bottom: 1px dashed var(--border); }
+    .item-row:last-child { border-bottom: 0; }
+    .item-name { font-weight: 700; color: var(--ink); }
+    .item-hint { color: var(--muted); font-weight: 600; font-size: .9rem; }
+    input[type=number] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      font-weight: 800;
+      text-align: right;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    input[type=number]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14,165,233,.2); }
+    input[type=number].flash-success { animation: flash-success .6s ease; }
+    input[type=number].flash-error { animation: flash-error .6s ease; }
+
+    @keyframes flash-success { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.9); border-color: #22c55e; } 100% { box-shadow: 0 0 0 12px rgba(74,222,128,0); border-color: var(--border); } }
+    @keyframes flash-error { 0% { box-shadow: 0 0 0 0 rgba(248,113,113,.9); border-color: #f87171; } 100% { box-shadow: 0 0 0 12px rgba(248,113,113,0); border-color: var(--border); } }
+
+    .store-overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.62); z-index: 200; transition: opacity .25s ease, visibility .25s ease; }
+    .store-overlay[hidden] { opacity: 0; visibility: hidden; }
+    .store-overlay__card { width: min(420px, 90vw); padding: 22px; border-radius: 16px; background: #fff; border: 1px solid var(--border); box-shadow: 0 18px 42px rgba(0,0,0,.28); display: grid; gap: 12px; }
+    .store-overlay__title { font-weight: 900; font-size: 1.1rem; letter-spacing: .02em; }
+    .store-overlay__lead { color: var(--muted); font-weight: 600; }
+    .store-input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: #f8fafc; font-weight: 800; letter-spacing: .08em; font-size: 1.05rem; text-align: center; }
+    .store-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14,165,233,.2); }
+    .store__error { color: #b91c1c; font-weight: 700; min-height: 1.1em; }
+    .meta-row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-weight: 600; margin-top: 8px; }
+    .last-edited { font-weight: 700; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top-row">
+      <div class="store-card">
+        <div>
+          <div class="store__label">Store #</div>
+          <div class="store__value" id="store-display">—</div>
+          <div class="store__pill" id="store-status">Not set</div>
+        </div>
+        <div class="store__actions">
+          <button type="button" id="store-change">Change</button>
+        </div>
+      </div>
+      <div class="date-picker">
+        <label for="date-picker">For</label>
+        <input type="date" id="date-picker" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card__header">
+        <div>
+          <h1>Cycle Count</h1>
+          <p class="lead">Quick spot check for random U-Haul odds and ends.</p>
+        </div>
+        <div class="status-pill" id="save-status">Waiting to start…</div>
+      </div>
+      <div class="items" id="item-list"></div>
+      <div class="meta-row">
+        <div class="last-edited" id="last-edited">Last saved: —</div>
+        <div class="item-hint">Fields auto-save and glow green when saved.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="store-overlay" id="store-overlay" role="dialog" aria-modal="true">
+    <div class="store-overlay__card">
+      <div class="store-overlay__title">Enter your store number to start</div>
+      <div class="store-overlay__lead">Saves are keyed by store and date so you can pick back up later.</div>
+      <input id="store-input" name="store-input" class="store-input" type="text" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="000000" aria-label="Store number" autocomplete="off" />
+      <div class="store__error" id="store-error" aria-live="assertive"></div>
+      <div class="store__actions" style="justify-content: flex-end;">
+        <button type="button" id="store-save">Save store</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const STORE_KEY = 'cycle-count-store';
+      const saveStatusEl = document.getElementById('save-status');
+      const lastEditedEl = document.getElementById('last-edited');
+      const storeOverlay = document.getElementById('store-overlay');
+      const storeInput = document.getElementById('store-input');
+      const storeDisplay = document.getElementById('store-display');
+      const storeStatus = document.getElementById('store-status');
+      const storeError = document.getElementById('store-error');
+      const changeStoreBtn = document.getElementById('store-change');
+      const saveStoreBtn = document.getElementById('store-save');
+      const datePicker = document.getElementById('date-picker');
+      const itemList = document.getElementById('item-list');
+
+      const ITEM_POOL = [
+        { id: 'dollies', name: 'Utility dollies' },
+        { id: 'appliance-dollies', name: 'Appliance dollies' },
+        { id: 'furniture-pads', name: 'Furniture pads' },
+        { id: 'mattress-bag', name: 'Mattress bags' },
+        { id: 'tv-cover', name: 'Flat screen TV covers' },
+        { id: 'tie-downs', name: 'Ratchet tie-downs' },
+        { id: 'rope', name: 'Rope (50 ft.)' },
+        { id: 'box-kit', name: 'Moving box kits' },
+        { id: 'packing-paper', name: 'Packing paper packs' },
+        { id: 'tape', name: 'Packing tape 3-pack' },
+        { id: 'wardrobe-box', name: 'Wardrobe boxes' },
+        { id: 'stretch-wrap', name: 'Stretch wrap rolls' },
+        { id: 'hitch-lock', name: 'Hitch locks' },
+        { id: 'bungee', name: 'Bungee cords bundle' },
+        { id: 'lock', name: 'Storage locks' },
+        { id: 'hand-truck', name: 'Hand trucks' },
+        { id: 'boxes-small', name: 'Small moving boxes' },
+        { id: 'boxes-large', name: 'Large moving boxes' },
+        { id: 'mirror-box', name: 'Mirror boxes' },
+        { id: 'bubble', name: 'Bubble cushion rolls' }
+      ];
+
+      let storeNumber = null;
+      let saveTimer = null;
+      let lastSavedInput = null;
+      let loading = false;
+
+      function shuffle(items){
+        const arr = [...items];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function buildItems(){
+        const frag = document.createDocumentFragment();
+        for (const item of shuffle(ITEM_POOL)) {
+          const row = document.createElement('div');
+          row.className = 'item-row';
+          const label = document.createElement('div');
+          label.className = 'item-name';
+          label.textContent = item.name;
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.min = '0';
+          input.step = '1';
+          input.placeholder = '0';
+          input.dataset.itemId = item.id;
+          input.addEventListener('input', () => scheduleSave(input));
+          row.appendChild(label);
+          row.appendChild(input);
+          frag.appendChild(row);
+        }
+        itemList.innerHTML = '';
+        itemList.appendChild(frag);
+      }
+
+      function setStatus(text){
+        saveStatusEl.textContent = text;
+      }
+
+      function formatTimestamp(ts){
+        if (!ts) return '—';
+        const d = new Date(ts);
+        return isNaN(d) ? '—' : d.toLocaleString();
+      }
+
+      function flashInput(el, kind){
+        if (!el) return;
+        el.classList.remove('flash-success', 'flash-error');
+        void el.offsetWidth; // restart animation
+        el.classList.add(kind);
+      }
+
+      function readInt(value){
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+      }
+
+      function collectItems(){
+        const entries = {};
+        itemList.querySelectorAll('input[data-item-id]').forEach(input => {
+          const key = input.dataset.itemId;
+          const qty = readInt(input.value);
+          if (qty > 0) entries[key] = qty;
+          else if (input.value === '') entries[key] = 0;
+        });
+        return entries;
+      }
+
+      function applyItems(saved){
+        const data = saved || {};
+        itemList.querySelectorAll('input[data-item-id]').forEach(input => {
+          const key = input.dataset.itemId;
+          const val = data[key];
+          input.value = typeof val === 'number' ? val : '';
+        });
+      }
+
+      function getDateKey(){
+        return datePicker.value || new Date().toISOString().slice(0,10);
+      }
+
+      function persistStoreNumber(value){
+        localStorage.setItem(STORE_KEY, value);
+      }
+
+      function restoreStoreNumber(){
+        const val = localStorage.getItem(STORE_KEY);
+        if (val && /^\d{6}$/.test(val)) {
+          storeNumber = val;
+          storeDisplay.textContent = val;
+          storeStatus.textContent = 'Ready';
+          storeOverlay.hidden = true;
+        } else {
+          storeOverlay.hidden = false;
+          storeInput.focus();
+        }
+      }
+
+      async function loadSaved(){
+        if (!storeNumber) return;
+        if (loading) return;
+        loading = true;
+        setStatus('Loading saved counts…');
+        const dateKey = getDateKey();
+        try {
+          const res = await fetch(`/api/cyclecount?date=${encodeURIComponent(dateKey)}&store=${encodeURIComponent(storeNumber)}`);
+          if (!res.ok) throw new Error('Request failed');
+          const data = await res.json();
+          applyItems(data.items);
+          lastEditedEl.textContent = `Last saved: ${formatTimestamp(data.updatedAt)}`;
+          setStatus('Loaded');
+        } catch (err) {
+          console.error(err);
+          setStatus('Unable to load');
+          flashInput(lastSavedInput, 'flash-error');
+        } finally {
+          loading = false;
+        }
+      }
+
+      async function saveItems(){
+        if (!storeNumber) {
+          setStatus('Set your store to start');
+          return;
+        }
+        const dateKey = getDateKey();
+        const payload = { items: collectItems() };
+        setStatus('Saving…');
+        try {
+          const res = await fetch(`/api/cyclecount?date=${encodeURIComponent(dateKey)}&store=${encodeURIComponent(storeNumber)}`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Save failed');
+          const data = await res.json();
+          setStatus('Saved');
+          lastEditedEl.textContent = `Last saved: ${formatTimestamp(data.updatedAt)}`;
+          flashInput(lastSavedInput, 'flash-success');
+        } catch (err) {
+          console.error(err);
+          setStatus('Save failed');
+          flashInput(lastSavedInput, 'flash-error');
+        }
+      }
+
+      function scheduleSave(input){
+        lastSavedInput = input;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveItems, 450);
+      }
+
+      function validateStore(value){
+        return /^\d{6}$/.test(value);
+      }
+
+      changeStoreBtn.addEventListener('click', () => {
+        storeOverlay.hidden = false;
+        storeInput.value = storeNumber || '';
+        storeInput.focus();
+      });
+
+      saveStoreBtn.addEventListener('click', () => {
+        const value = storeInput.value.trim();
+        if (!validateStore(value)) {
+          storeError.textContent = 'Store number must be 6 digits.';
+          return;
+        }
+        storeError.textContent = '';
+        storeNumber = value;
+        persistStoreNumber(value);
+        storeDisplay.textContent = value;
+        storeStatus.textContent = 'Ready';
+        storeOverlay.hidden = true;
+        loadSaved();
+      });
+
+      storeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          saveStoreBtn.click();
+        }
+      });
+
+      datePicker.addEventListener('change', () => {
+        loadSaved();
+      });
+
+      datePicker.value = new Date().toISOString().slice(0, 10);
+      buildItems();
+      restoreStoreNumber();
+      if (storeNumber) {
+        loadSaved();
+      }
+    })();
+  </script>
+</body>
+</html>
